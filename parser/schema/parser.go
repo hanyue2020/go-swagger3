@@ -1,14 +1,15 @@
 package schema
 
 import (
-	. "github.com/parvez3019/go-swagger3/openApi3Schema"
-	"github.com/parvez3019/go-swagger3/parser/model"
-	"github.com/parvez3019/go-swagger3/parser/utils"
 	"go/ast"
 	goParser "go/parser"
 	"go/token"
 	"os"
 	"strings"
+
+	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
+	"github.com/hanyue2020/go-swagger3/parser/model"
+	"github.com/hanyue2020/go-swagger3/parser/utils"
 )
 
 type Parser interface {
@@ -50,12 +51,13 @@ func (p *parser) RegisterType(pkgPath, pkgName, typeName string) (string, error)
 
 	if utils.IsBasicGoType(typeName) || utils.IsInterfaceType(typeName) {
 		registerTypeName = typeName
-	} else if schemaObject, ok := p.KnownIDSchema[utils.GenSchemaObjectID(pkgName, typeName, p.SchemaWithoutPkg)]; ok {
-		_, ok := p.OpenAPI.Components.Schemas[utils.ReplaceBackslash(typeName)]
+	} else if schemaObject, ok := p.KnownIDSchema[utils.GenSchemaObjectID(pkgName, typeName)]; ok {
+		_, ok := p.OpenAPI.Components.Schemas[schemaObject.ID]
 		if !ok {
-			p.OpenAPI.Components.Schemas[utils.ReplaceBackslash(typeName)] = schemaObject
+			// p.OpenAPI.Components.Schemas[utils.ReplaceBackslash(typeName)] = schemaObject
+			p.OpenAPI.Components.Schemas[schemaObject.ID] = schemaObject
 		}
-		return utils.GenSchemaObjectID(pkgName, typeName, p.SchemaWithoutPkg), nil
+		return utils.GenSchemaObjectID(pkgName, typeName), nil
 	} else {
 		schemaObject, err := p.ParseSchemaObject(pkgPath, pkgName, typeName)
 		if err != nil {

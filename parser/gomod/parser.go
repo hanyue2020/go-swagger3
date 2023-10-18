@@ -1,7 +1,6 @@
 package gomod
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,7 +8,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/parvez3019/go-swagger3/parser/model"
+	"github.com/hanyue2020/go-swagger3/parser/model"
 	"golang.org/x/mod/modfile"
 )
 
@@ -30,7 +29,7 @@ func NewParser(utils model.Utils) Parser {
 // Parse parse go.mod info
 func (p *parser) Parse() error {
 	log.Info("Parsing GoMod Info ...")
-	b, err := ioutil.ReadFile(p.GoModFilePath)
+	b, err := os.ReadFile(p.GoModFilePath)
 	if err != nil {
 		return err
 	}

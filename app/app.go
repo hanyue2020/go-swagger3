@@ -1,8 +1,8 @@
 package app
 
 import (
-	parserPkg "github.com/parvez3019/go-swagger3/parser"
-	"github.com/parvez3019/go-swagger3/writer"
+	parserPkg "github.com/hanyue2020/go-swagger3/parser"
+	"github.com/hanyue2020/go-swagger3/writer"
 	"github.com/urfave/cli"
 )
 
@@ -36,7 +36,6 @@ func action(c *cli.Context) error {
 		args.handlerPath,
 		args.debug,
 		args.strict,
-		args.schemaWithoutPkg,
 	).Init()
 
 	if err != nil {
@@ -48,5 +47,5 @@ func action(c *cli.Context) error {
 	}
 
 	fw := writer.NewFileWriter()
-	return fw.Write(openApiObject, args.output, args.generateYaml, args.schemaWithoutPkg)
+	return fw.Write(openApiObject, args.output, args.generateYaml)
 }

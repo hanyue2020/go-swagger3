@@ -1,10 +1,11 @@
 package schema
 
 import (
-	"github.com/iancoleman/orderedmap"
-	. "github.com/parvez3019/go-swagger3/openApi3Schema"
-	"github.com/parvez3019/go-swagger3/parser/utils"
 	"strings"
+
+	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
+	"github.com/hanyue2020/go-swagger3/parser/utils"
+	"github.com/iancoleman/orderedmap"
 )
 
 func (p *parser) parseBasicTypeSchemaObject(pkgPath string, pkgName string, typeName string) (*SchemaObject, error, bool) {
@@ -34,6 +35,10 @@ func (p *parser) parseInterfaceType() (*SchemaObject, error, bool) {
 	return &SchemaObject{Type: "object"}, nil, true
 }
 
+func (p *parser) parseAnonymousStructType() (*SchemaObject, error, bool) {
+	return &SchemaObject{Type: "object"}, nil, false
+}
+
 func (p *parser) parseTimeType(schemaObject SchemaObject) (*SchemaObject, error, bool) {
 	schemaObject.Type = "string"
 	schemaObject.Format = "date-time"
@@ -43,7 +48,7 @@ func (p *parser) parseTimeType(schemaObject SchemaObject) (*SchemaObject, error,
 func (p *parser) parseArrayType(pkgPath string, pkgName string, typeName string, schemaObject SchemaObject, err error) (*SchemaObject, error, bool) {
 	schemaObject.Type = "array"
 	itemTypeName := typeName[2:]
-	schema, ok := p.KnownIDSchema[utils.GenSchemaObjectID(pkgName, itemTypeName, p.SchemaWithoutPkg)]
+	schema, ok := p.KnownIDSchema[utils.GenSchemaObjectID(pkgName, itemTypeName)]
 	if ok {
 		schemaObject.Items = &SchemaObject{Ref: utils.AddSchemaRefLinkPrefix(schema.ID)}
 		return &schemaObject, nil, true
@@ -58,7 +63,7 @@ func (p *parser) parseArrayType(pkgPath string, pkgName string, typeName string,
 func (p *parser) parseMapType(pkgPath string, pkgName string, typeName string, schemaObject SchemaObject) (*SchemaObject, error, bool) {
 	schemaObject.Type = "object"
 	itemTypeName := typeName[5:]
-	schema, ok := p.KnownIDSchema[utils.GenSchemaObjectID(pkgName, itemTypeName, p.SchemaWithoutPkg)]
+	schema, ok := p.KnownIDSchema[utils.GenSchemaObjectID(pkgName, itemTypeName)]
 	if ok {
 		schemaObject.Items = &SchemaObject{Ref: utils.AddSchemaRefLinkPrefix(schema.ID)}
 		return &schemaObject, nil, true

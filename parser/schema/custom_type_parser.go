@@ -3,14 +3,15 @@ package schema
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/iancoleman/orderedmap"
-	. "github.com/parvez3019/go-swagger3/openApi3Schema"
-	"github.com/parvez3019/go-swagger3/parser/utils"
-	log "github.com/sirupsen/logrus"
 	"go/ast"
 	"reflect"
 	"strconv"
 	"strings"
+
+	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
+	"github.com/hanyue2020/go-swagger3/parser/utils"
+	"github.com/iancoleman/orderedmap"
+	log "github.com/sirupsen/logrus"
 )
 
 func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typeName string) (*SchemaObject, error) {
@@ -26,7 +27,7 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 			log.Fatalf("Can not find definition of %s ast.TypeSpec. Current package %s", typeName, pkgName)
 		}
 		schemaObject.PkgName = pkgName
-		schemaObject.ID = utils.GenSchemaObjectID(pkgName, typeName, p.SchemaWithoutPkg)
+		schemaObject.ID = utils.GenSchemaObjectID(pkgName, typeName)
 		p.KnownIDSchema[schemaObject.ID] = &schemaObject
 	} else {
 		guessPkgName := strings.Join(typeNameParts[:len(typeNameParts)-1], "/")
@@ -73,7 +74,7 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 			}
 
 			schemaObject.PkgName = guessPkgName
-			schemaObject.ID = utils.GenSchemaObjectID(guessPkgName, guessTypeName, p.SchemaWithoutPkg)
+			schemaObject.ID = utils.GenSchemaObjectID(guessPkgName, guessTypeName)
 			p.KnownIDSchema[schemaObject.ID] = &schemaObject
 		}
 		pkgPath, pkgName = guessPkgPath, guessPkgName
@@ -163,12 +164,29 @@ astFieldsLoop:
 		fieldSchema := &SchemaObject{}
 		typeAsString := p.getTypeAsString(astField.Type)
 		typeAsString = strings.TrimLeft(typeAsString, "*")
-		if strings.HasPrefix(typeAsString, "[]") {
+		if typeAsString == "[]struct{}" {
+			array := astField.Type.(*ast.ArrayType)
+			fieldSchema.Type = "array"
+			fieldSchema.Items = &SchemaObject{}
+			item := array.Elt.(*ast.StructType)
+			p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, fieldSchema.Items, item.Fields.List)
+		} else if strings.HasPrefix(typeAsString, "[]") {
 			fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
 			if err != nil {
 				p.Debug(err)
 				return
 			}
+		} else if typeAsString == "map[]struct{}" {
+			mapType := astField.Type.(*ast.MapType)
+			fieldSchema.Type = "object"
+
+			fieldSchema.Properties = orderedmap.New()
+			schemaProperty := &SchemaObject{Type: "object", Properties: orderedmap.New()}
+			fieldSchema.Properties.Set("key", schemaProperty)
+			// 处理value
+			value := mapType.Value.(*ast.StructType)
+			p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, schemaProperty, value.Fields.List)
+
 		} else if strings.HasPrefix(typeAsString, "map[]") {
 			fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
 			if err != nil {
@@ -187,6 +205,8 @@ astFieldsLoop:
 				p.Debug(err)
 				return
 			}
+		} else if strings.HasPrefix(typeAsString, "struct{}") {
+			p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, fieldSchema, astField.Type.(*ast.StructType).Fields.List)
 		} else if !utils.IsBasicGoType(typeAsString) {
 			fieldSchemaSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString)
 			if err != nil {
@@ -308,18 +328,35 @@ astFieldsLoop:
 
 			if desc := astFieldTag.Get("description"); desc != "" {
 				fieldSchema.Description = desc
+			} else {
+				if astField.Comment != nil {
+					fieldSchema.Description = strings.TrimSpace(strings.Trim(astField.Comment.List[0].Text, "//"))
+				}
 			}
 
 			if ref := astFieldTag.Get("$ref"); ref != "" {
 				fieldSchema.Ref = utils.AddSchemaRefLinkPrefix(ref)
 				fieldSchema.Type = "" // remove default type in case of reference link
+				fieldSchema.Description = ""
 			}
 
 			if enumValues := astFieldTag.Get("enum"); enumValues != "" {
-				fieldSchema.Enum = parseEnumValues(enumValues)
+				if fieldSchema.Type == "array" {
+					fieldSchema.Items.Enum = parseEnumValues(enumValues)
+				} else {
+					fieldSchema.Enum = parseEnumValues(enumValues)
+				}
 			}
 		}
-
+		if fieldSchema.Description == "" && fieldSchema.Ref == "" {
+			if astField.Comment != nil {
+				fieldSchema.Description = strings.TrimSpace(strings.Trim(astField.Comment.List[0].Text, "//"))
+			}
+		}
+		if fieldSchema.Ref != "" {
+			fieldSchema.Description = ""
+			fieldSchema.Type = ""
+		}
 		structSchema.Properties.Set(name, fieldSchema)
 	}
 	for _, astField := range astFields {
@@ -353,6 +390,8 @@ astFieldsLoop:
 				p.Debug(err)
 				return
 			}
+		} else if strings.HasPrefix(typeAsString, "struct{}") {
+			p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, fieldSchema, astField.Type.(*ast.StructType).Fields.List)
 		} else if !utils.IsBasicGoType(typeAsString) {
 			fieldSchemaSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString)
 			if err != nil {
@@ -440,7 +479,10 @@ func (p *parser) getTypeAsString(fieldType interface{}) string {
 
 		return packageNameIdent.Name + "." + astSelectorExpr.Sel.Name
 	}
-
+	_, ok = fieldType.(*ast.StructType)
+	if ok {
+		return "struct{}"
+	}
 	return fmt.Sprint(fieldType)
 }
 
