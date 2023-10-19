@@ -30,7 +30,7 @@ func LoadArgs(c *cli.Context) *args {
 		generateYaml: c.GlobalBool("generate-yaml"),
 	}
 	if appArgs.generateYaml && strings.HasSuffix(appArgs.output, ".json") {
-		appArgs.output = strings.TrimSuffix(appArgs.output, ".json") + ".yml"
+		appArgs.output = strings.TrimSuffix(appArgs.output, ".json") + ".yaml"
 	}
 	return &appArgs
 
