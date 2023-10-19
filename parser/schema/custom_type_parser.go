@@ -359,6 +359,7 @@ astFieldsLoop:
 		}
 		structSchema.Properties.Set(name, fieldSchema)
 	}
+	// embedded type
 	for _, astField := range astFields {
 		if len(astField.Names) > 0 {
 			continue
@@ -366,12 +367,29 @@ astFieldsLoop:
 		fieldSchema := &SchemaObject{}
 		typeAsString := p.getTypeAsString(astField.Type)
 		typeAsString = strings.TrimLeft(typeAsString, "*")
-		if strings.HasPrefix(typeAsString, "[]") {
+		if typeAsString == "[]struct{}" {
+			array := astField.Type.(*ast.ArrayType)
+			fieldSchema.Type = "array"
+			fieldSchema.Items = &SchemaObject{}
+			item := array.Elt.(*ast.StructType)
+			p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, fieldSchema.Items, item.Fields.List)
+		} else if strings.HasPrefix(typeAsString, "[]") {
 			fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
 			if err != nil {
 				p.Debug(err)
 				return
 			}
+		} else if typeAsString == "map[]struct{}" {
+			mapType := astField.Type.(*ast.MapType)
+			fieldSchema.Type = "object"
+
+			fieldSchema.Properties = orderedmap.New()
+			schemaProperty := &SchemaObject{Type: "object", Properties: orderedmap.New()}
+			fieldSchema.Properties.Set("key", schemaProperty)
+			// 处理value
+			value := mapType.Value.(*ast.StructType)
+			p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, schemaProperty, value.Fields.List)
+
 		} else if strings.HasPrefix(typeAsString, "map[]") {
 			fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
 			if err != nil {
@@ -410,38 +428,34 @@ astFieldsLoop:
 		} else if utils.IsGoTypeOASType(typeAsString) {
 			fieldSchema.Type = utils.GoTypesOASTypes[typeAsString]
 		}
-		// embedded type
-		if len(astField.Names) == 0 {
-			if fieldSchema.Properties != nil {
-				for _, propertyName := range fieldSchema.Properties.Keys() {
+		if fieldSchema.Properties != nil {
+			for _, propertyName := range fieldSchema.Properties.Keys() {
+				_, exist := structSchema.Properties.Get(propertyName)
+				if exist {
+					continue
+				}
+				propertySchema, _ := fieldSchema.Properties.Get(propertyName)
+				structSchema.Properties.Set(propertyName, propertySchema)
+			}
+		} else if len(fieldSchema.Ref) != 0 && len(fieldSchema.ID) != 0 {
+			refSchema, ok := p.KnownIDSchema[fieldSchema.ID]
+			if ok {
+				for _, propertyName := range refSchema.Properties.Keys() {
+					refPropertySchema, _ := refSchema.Properties.Get(propertyName)
+					_, disabled := structSchema.DisabledFieldNames[refPropertySchema.(*SchemaObject).FieldName]
+					if disabled {
+						continue
+					}
 					_, exist := structSchema.Properties.Get(propertyName)
 					if exist {
 						continue
 					}
-					propertySchema, _ := fieldSchema.Properties.Get(propertyName)
-					structSchema.Properties.Set(propertyName, propertySchema)
-				}
-			} else if len(fieldSchema.Ref) != 0 && len(fieldSchema.ID) != 0 {
-				refSchema, ok := p.KnownIDSchema[fieldSchema.ID]
-				if ok {
-					for _, propertyName := range refSchema.Properties.Keys() {
-						refPropertySchema, _ := refSchema.Properties.Get(propertyName)
-						_, disabled := structSchema.DisabledFieldNames[refPropertySchema.(*SchemaObject).FieldName]
-						if disabled {
-							continue
-						}
-						// p.debug(">", propertyName)
-						_, exist := structSchema.Properties.Get(propertyName)
-						if exist {
-							continue
-						}
 
-						structSchema.Properties.Set(propertyName, refPropertySchema)
-					}
+					structSchema.Properties.Set(propertyName, refPropertySchema)
 				}
 			}
-			continue
 		}
+		continue
 	}
 }
 
