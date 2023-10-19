@@ -33,6 +33,8 @@ func (w *fileWriter) Write(openApiObject oas.OpenAPIObject, path string, generat
 	}
 	defer fd.Close()
 
+	desc, _ := os.ReadFile("./README.md")
+	openApiObject.Info.Description = string(desc)
 	if generateYAML {
 		output, err = yaml.Marshal(openApiObject)
 		if err != nil {
