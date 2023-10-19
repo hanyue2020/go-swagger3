@@ -56,11 +56,15 @@ func (p *parser) Parse() error {
 
 func (p *parser) parseCommentGroups(commentGroup *ast.CommentGroup, oauthScopes map[string]map[string]string) {
 	for _, comment := range strings.Split(commentGroup.Text(), "\n") {
+		if comment == "" {
+			continue
+		}
 		p.parseComment(comment, oauthScopes)
 	}
 }
 
 func (p *parser) parseComment(comment string, oauthScopes map[string]map[string]string) {
+	comment = strings.TrimSpace(comment)
 	attribute, value, notPresent := p.parseAttributeAndValue(comment)
 	if notPresent {
 		return
