@@ -1,15 +1,19 @@
 package schema
 
 import (
+	"encoding/json"
 	"go/ast"
 	goParser "go/parser"
 	"go/token"
 	"os"
+	"reflect"
+	"strconv"
 	"strings"
 
 	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
 	"github.com/hanyue2020/go-swagger3/parser/model"
 	"github.com/hanyue2020/go-swagger3/parser/utils"
+	"github.com/spf13/cast"
 )
 
 type Parser interface {
@@ -79,4 +83,168 @@ func (p *parser) ParseSchemaObject(pkgPath, pkgName, typeName string) (*SchemaOb
 	}
 
 	return p.parseCustomTypeSchemaObject(pkgPath, pkgName, typeName)
+}
+
+func (p *parser) parseDocAttributeAndValue(comment string) (string, string, bool) {
+	attribute := strings.ToLower(strings.Split(comment, " ")[0])
+	if len(attribute) == 0 || attribute[0] != '@' {
+		return "", "", false
+	}
+	value := strings.TrimSpace(comment[len(attribute):])
+	if len(value) == 0 {
+		return "", "", false
+	}
+	return attribute, value, true
+}
+
+func (p *parser) parseFieldDoc(doc *ast.CommentGroup) map[string]string {
+	attrs := make(map[string]string)
+	if doc == nil {
+		return attrs
+	}
+	for _, comment := range strings.Split(doc.Text(), "\n") {
+		if comment == "" {
+			continue
+		}
+		key, value, ok := p.parseDocAttributeAndValue(strings.TrimSpace(comment))
+		if !ok {
+			continue
+		}
+		attrs[key] = value
+	}
+	return attrs
+}
+func (p *parser) parseFileName(jsonTag, name string, structSchema, fieldSchema *SchemaObject) (filedName string, isRequired, astFieldsLoop bool) {
+	tagValues := strings.Split(jsonTag, ",")
+	for _, v := range tagValues {
+		if v == "-" {
+			structSchema.DisabledFieldNames[name] = struct{}{}
+			fieldSchema.Deprecated = true
+			astFieldsLoop = true
+			return
+		} else if v == "required" {
+			isRequired = true
+		} else if v != "" && v != "required" && v != "omitempty" {
+			filedName = v
+		}
+	}
+	return
+}
+func (p *parser) parseFieldTagAndDoc(astField *ast.Field, structSchema, fieldSchema *SchemaObject) (astFieldsLoop bool, name string) {
+	isRequired := false
+	name = astField.Names[0].Name
+
+	if astField.Doc == nil {
+		if astField.Tag == nil {
+			return
+		}
+		astFieldTag := reflect.StructTag(strings.Trim(astField.Tag.Value, "`"))
+		name, isRequired, astFieldsLoop = p.parseFileName(astFieldTag.Get("json"), name, structSchema, fieldSchema)
+		if isRequired {
+			structSchema.Required = append(structSchema.Required, name)
+		}
+		if astFieldsLoop {
+			return
+		}
+		return
+	}
+
+	doc := p.parseFieldDoc(astField.Doc)
+
+	if goSwagger3 := doc["@go-swagger3"]; goSwagger3 != "" {
+		name, isRequired, astFieldsLoop = p.parseFileName(goSwagger3, name, structSchema, fieldSchema)
+		if astFieldsLoop {
+			return
+		}
+	}
+
+	if skip := doc["@skip"]; skip == "true" {
+		astFieldsLoop = true
+		return
+	}
+
+	if tag := doc["@json"]; tag == "" && astField.Tag != nil {
+		astFieldTag := reflect.StructTag(strings.Trim(astField.Tag.Value, "`"))
+		tag = astFieldTag.Get("json")
+		name, isRequired, astFieldsLoop = p.parseFileName(tag, name, structSchema, fieldSchema)
+		if astFieldsLoop {
+			return
+		}
+	}
+	// 解析example
+	if example := doc["@example"]; example != "" {
+		switch fieldSchema.Type {
+		case "boolean":
+			fieldSchema.Example, _ = strconv.ParseBool(example)
+		case "integer":
+			fieldSchema.Example, _ = strconv.Atoi(example)
+		case "number":
+			fieldSchema.Example, _ = strconv.ParseFloat(example, 64)
+		case "array":
+			b, err := json.RawMessage(example).MarshalJSON()
+			if err != nil {
+				fieldSchema.Example = "invalid example"
+			} else {
+				sliceOfInterface := []interface{}{}
+				err := json.Unmarshal(b, &sliceOfInterface)
+				if err != nil {
+					fieldSchema.Example = "invalid example"
+				} else {
+					fieldSchema.Example = sliceOfInterface
+				}
+			}
+		case "object":
+			b, err := json.RawMessage(example).MarshalJSON()
+			if err != nil {
+				fieldSchema.Example = "invalid example"
+			} else {
+				mapOfInterface := map[string]interface{}{}
+				err := json.Unmarshal(b, &mapOfInterface)
+				if err != nil {
+					fieldSchema.Example = "invalid example"
+				} else {
+					fieldSchema.Example = mapOfInterface
+				}
+			}
+		default:
+			fieldSchema.Example = example
+		}
+
+		if fieldSchema.Example != nil && len(fieldSchema.Ref) != 0 {
+			fieldSchema.Ref = ""
+		}
+	}
+
+	if overrideExample := doc["@override-example"]; overrideExample != "" {
+		fieldSchema.Example = overrideExample
+
+		if fieldSchema.Example != nil && len(fieldSchema.Ref) != 0 {
+			fieldSchema.Ref = ""
+		}
+	}
+
+	if data, ok := doc["@required"]; ok || isRequired || cast.ToBool(data) {
+		structSchema.Required = append(structSchema.Required, name)
+	}
+	// 解析备注
+	desc := doc["@desc"]
+	if desc == "" && astField.Comment != nil {
+		desc = strings.TrimSpace(strings.Trim(astField.Comment.List[0].Text, "//"))
+	}
+	fieldSchema.Description = desc
+	// 解析ref
+	if ref := doc["@ref"]; ref != "" {
+		fieldSchema.Ref = utils.AddSchemaRefLinkPrefix(ref)
+		fieldSchema.Type = "" // remove default type in case of reference link
+		fieldSchema.Description = ""
+	}
+	// 解析枚举
+	if enumValues := doc["@enum"]; enumValues != "" {
+		if fieldSchema.Type == "array" {
+			fieldSchema.Items.Enum = parseEnumValues(enumValues)
+		} else {
+			fieldSchema.Enum = parseEnumValues(enumValues)
+		}
+	}
+	return
 }
