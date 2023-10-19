@@ -229,7 +229,7 @@ func (p *parser) parseFieldTagAndDoc(astField *ast.Field, structSchema, fieldSch
 	// 解析备注
 	desc := doc["@desc"]
 	if desc == "" && astField.Comment != nil {
-		desc = strings.TrimSpace(strings.Trim(astField.Comment.List[0].Text, "//"))
+		desc = strings.Split(astField.Comment.Text(), "\n")[0]
 	}
 	fieldSchema.Description = desc
 	// 解析ref
