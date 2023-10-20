@@ -1,11 +1,8 @@
 package schema
 
 import (
-	"encoding/json"
 	"fmt"
 	"go/ast"
-	"reflect"
-	"strconv"
 	"strings"
 
 	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
@@ -146,12 +143,79 @@ func (p *parser) getTypeSpec(pkgName, typeName string) (*ast.TypeSpec, bool) {
 	}
 	return astTypeSpec, true
 }
+func (p *parser) parseStructField(pkgPath, pkgName string, structSchema *SchemaObject, astField *ast.Field) (fieldSchema *SchemaObject, err error) {
+	fieldSchema = &SchemaObject{}
+	typeAsString := p.getTypeAsString(astField.Type)
+	typeAsString = strings.TrimLeft(typeAsString, "*")
+	if typeAsString == "[]struct{}" {
+		array := astField.Type.(*ast.ArrayType)
+		fieldSchema.Type = "array"
+		fieldSchema.Items = &SchemaObject{}
+		item := array.Elt.(*ast.StructType)
+		p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, fieldSchema.Items, item.Fields.List)
+	} else if strings.HasPrefix(typeAsString, "[]") {
+		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
+		if err != nil {
+			p.Debug(err)
+			return
+		}
+	} else if typeAsString == "map[]struct{}" {
+		mapType := astField.Type.(*ast.MapType)
+		fieldSchema.Type = "object"
+
+		fieldSchema.Properties = orderedmap.New()
+		schemaProperty := &SchemaObject{Type: "object", Properties: orderedmap.New()}
+		fieldSchema.Properties.Set("key", schemaProperty)
+		// 处理value
+		value := mapType.Value.(*ast.StructType)
+		p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, schemaProperty, value.Fields.List)
+
+	} else if strings.HasPrefix(typeAsString, "map[]") {
+		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
+		if err != nil {
+			p.Debug(err)
+			return
+		}
+	} else if typeAsString == "time.Time" {
+		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
+		if err != nil {
+			p.Debug(err)
+			return
+		}
+	} else if strings.HasPrefix(typeAsString, "interface{}") {
+		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
+		if err != nil {
+			p.Debug(err)
+			return
+		}
+	} else if strings.HasPrefix(typeAsString, "struct{}") {
+		fieldSchema.Type = "object"
+		p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, fieldSchema, astField.Type.(*ast.StructType).Fields.List)
+	} else if !utils.IsBasicGoType(typeAsString) {
+		fieldSchemaSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString)
+		if err != nil {
+			p.Debug("parseSchemaPropertiesFromStructFields err:", err)
+		} else {
+			fieldSchema.ID = fieldSchemaSchemeaObjectID
+			schema, ok := p.KnownIDSchema[fieldSchemaSchemeaObjectID]
+			if ok {
+				fieldSchema.Type = schema.Type
+				if schema.Items != nil {
+					fieldSchema.Items = schema.Items
+				}
+			}
+			fieldSchema.Ref = utils.AddSchemaRefLinkPrefix(fieldSchemaSchemeaObjectID)
+		}
+	} else if utils.IsGoTypeOASType(typeAsString) {
+		fieldSchema.Type = utils.GoTypesOASTypes[typeAsString]
+	}
+	return
+}
 
 func (p *parser) parseSchemaPropertiesFromStructFields(pkgPath, pkgName string, structSchema *SchemaObject, astFields []*ast.Field) {
 	if astFields == nil {
 		return
 	}
-	var err error
 	structSchema.Properties = orderedmap.New()
 	if structSchema.DisabledFieldNames == nil {
 		structSchema.DisabledFieldNames = map[string]struct{}{}
@@ -161,192 +225,23 @@ astFieldsLoop:
 		if len(astField.Names) == 0 {
 			continue
 		}
-		fieldSchema := &SchemaObject{}
-		typeAsString := p.getTypeAsString(astField.Type)
-		typeAsString = strings.TrimLeft(typeAsString, "*")
-		if typeAsString == "[]struct{}" {
-			array := astField.Type.(*ast.ArrayType)
-			fieldSchema.Type = "array"
-			fieldSchema.Items = &SchemaObject{}
-			item := array.Elt.(*ast.StructType)
-			p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, fieldSchema.Items, item.Fields.List)
-		} else if strings.HasPrefix(typeAsString, "[]") {
-			fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
-			if err != nil {
-				p.Debug(err)
-				return
-			}
-		} else if typeAsString == "map[]struct{}" {
-			mapType := astField.Type.(*ast.MapType)
-			fieldSchema.Type = "object"
-
-			fieldSchema.Properties = orderedmap.New()
-			schemaProperty := &SchemaObject{Type: "object", Properties: orderedmap.New()}
-			fieldSchema.Properties.Set("key", schemaProperty)
-			// 处理value
-			value := mapType.Value.(*ast.StructType)
-			p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, schemaProperty, value.Fields.List)
-
-		} else if strings.HasPrefix(typeAsString, "map[]") {
-			fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
-			if err != nil {
-				p.Debug(err)
-				return
-			}
-		} else if typeAsString == "time.Time" {
-			fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
-			if err != nil {
-				p.Debug(err)
-				return
-			}
-		} else if strings.HasPrefix(typeAsString, "interface{}") {
-			fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
-			if err != nil {
-				p.Debug(err)
-				return
-			}
-		} else if strings.HasPrefix(typeAsString, "struct{}") {
-			p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, fieldSchema, astField.Type.(*ast.StructType).Fields.List)
-		} else if !utils.IsBasicGoType(typeAsString) {
-			fieldSchemaSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString)
-			if err != nil {
-				p.Debug("parseSchemaPropertiesFromStructFields err:", err)
-			} else {
-				fieldSchema.ID = fieldSchemaSchemeaObjectID
-				schema, ok := p.KnownIDSchema[fieldSchemaSchemeaObjectID]
-				if ok {
-					fieldSchema.Type = schema.Type
-					if schema.Items != nil {
-						fieldSchema.Items = schema.Items
-					}
-				}
-				fieldSchema.Ref = utils.AddSchemaRefLinkPrefix(fieldSchemaSchemeaObjectID)
-			}
-		} else if utils.IsGoTypeOASType(typeAsString) {
-			fieldSchema.Type = utils.GoTypesOASTypes[typeAsString]
+		fieldSchema, err := p.parseStructField(pkgPath, pkgName, structSchema, astField)
+		if err != nil {
+			return
 		}
 
 		name := astField.Names[0].Name
 		fieldSchema.FieldName = name
+		continueLoop := false
 		_, disabled := structSchema.DisabledFieldNames[name]
 		if disabled {
 			continue
 		}
 
-		if astField.Tag != nil {
-			astFieldTag := reflect.StructTag(strings.Trim(astField.Tag.Value, "`"))
-			tagText := ""
+		continueLoop, name = p.parseFieldTagAndDoc(astField, structSchema, fieldSchema)
 
-			if tag := astFieldTag.Get("go-swagger3"); tag != "" {
-				tagText = tag
-			}
-
-			if skip := astFieldTag.Get("skip"); skip == "true" {
-				continue astFieldsLoop
-			}
-
-			tagValues := strings.Split(tagText, ",")
-			for _, v := range tagValues {
-				if v == "-" {
-					structSchema.DisabledFieldNames[name] = struct{}{}
-					fieldSchema.Deprecated = true
-					continue astFieldsLoop
-				}
-			}
-
-			if tag := astFieldTag.Get("json"); tag != "" {
-				tagText = tag
-			}
-			tagValues = strings.Split(tagText, ",")
-			isRequired := false
-			for _, v := range tagValues {
-				if v == "-" {
-					structSchema.DisabledFieldNames[name] = struct{}{}
-					fieldSchema.Deprecated = true
-					continue astFieldsLoop
-				} else if v == "required" {
-					isRequired = true
-				} else if v != "" && v != "required" && v != "omitempty" {
-					name = v
-				}
-			}
-
-			if tag := astFieldTag.Get("example"); tag != "" {
-				switch fieldSchema.Type {
-				case "boolean":
-					fieldSchema.Example, _ = strconv.ParseBool(tag)
-				case "integer":
-					fieldSchema.Example, _ = strconv.Atoi(tag)
-				case "number":
-					fieldSchema.Example, _ = strconv.ParseFloat(tag, 64)
-				case "array":
-					b, err := json.RawMessage(tag).MarshalJSON()
-					if err != nil {
-						fieldSchema.Example = "invalid example"
-					} else {
-						sliceOfInterface := []interface{}{}
-						err := json.Unmarshal(b, &sliceOfInterface)
-						if err != nil {
-							fieldSchema.Example = "invalid example"
-						} else {
-							fieldSchema.Example = sliceOfInterface
-						}
-					}
-				case "object":
-					b, err := json.RawMessage(tag).MarshalJSON()
-					if err != nil {
-						fieldSchema.Example = "invalid example"
-					} else {
-						mapOfInterface := map[string]interface{}{}
-						err := json.Unmarshal(b, &mapOfInterface)
-						if err != nil {
-							fieldSchema.Example = "invalid example"
-						} else {
-							fieldSchema.Example = mapOfInterface
-						}
-					}
-				default:
-					fieldSchema.Example = tag
-				}
-
-				if fieldSchema.Example != nil && len(fieldSchema.Ref) != 0 {
-					fieldSchema.Ref = ""
-				}
-			}
-
-			if tag := astFieldTag.Get("override-example"); tag != "" {
-				fieldSchema.Example = tag
-
-				if fieldSchema.Example != nil && len(fieldSchema.Ref) != 0 {
-					fieldSchema.Ref = ""
-				}
-			}
-
-			if _, ok := astFieldTag.Lookup("required"); ok || isRequired {
-				structSchema.Required = append(structSchema.Required, name)
-			}
-
-			if desc := astFieldTag.Get("description"); desc != "" {
-				fieldSchema.Description = desc
-			} else {
-				if astField.Comment != nil {
-					fieldSchema.Description = strings.TrimSpace(strings.Trim(astField.Comment.List[0].Text, "//"))
-				}
-			}
-
-			if ref := astFieldTag.Get("$ref"); ref != "" {
-				fieldSchema.Ref = utils.AddSchemaRefLinkPrefix(ref)
-				fieldSchema.Type = "" // remove default type in case of reference link
-				fieldSchema.Description = ""
-			}
-
-			if enumValues := astFieldTag.Get("enum"); enumValues != "" {
-				if fieldSchema.Type == "array" {
-					fieldSchema.Items.Enum = parseEnumValues(enumValues)
-				} else {
-					fieldSchema.Enum = parseEnumValues(enumValues)
-				}
-			}
+		if continueLoop {
+			continue astFieldsLoop
 		}
 		if fieldSchema.Description == "" && fieldSchema.Ref == "" {
 			if astField.Comment != nil {
@@ -364,70 +259,13 @@ astFieldsLoop:
 		if len(astField.Names) > 0 {
 			continue
 		}
-		fieldSchema := &SchemaObject{}
-		typeAsString := p.getTypeAsString(astField.Type)
-		typeAsString = strings.TrimLeft(typeAsString, "*")
-		if typeAsString == "[]struct{}" {
-			array := astField.Type.(*ast.ArrayType)
-			fieldSchema.Type = "array"
-			fieldSchema.Items = &SchemaObject{}
-			item := array.Elt.(*ast.StructType)
-			p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, fieldSchema.Items, item.Fields.List)
-		} else if strings.HasPrefix(typeAsString, "[]") {
-			fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
-			if err != nil {
-				p.Debug(err)
-				return
-			}
-		} else if typeAsString == "map[]struct{}" {
-			mapType := astField.Type.(*ast.MapType)
-			fieldSchema.Type = "object"
-
-			fieldSchema.Properties = orderedmap.New()
-			schemaProperty := &SchemaObject{Type: "object", Properties: orderedmap.New()}
-			fieldSchema.Properties.Set("key", schemaProperty)
-			// 处理value
-			value := mapType.Value.(*ast.StructType)
-			p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, schemaProperty, value.Fields.List)
-
-		} else if strings.HasPrefix(typeAsString, "map[]") {
-			fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
-			if err != nil {
-				p.Debug(err)
-				return
-			}
-		} else if typeAsString == "time.Time" {
-			fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
-			if err != nil {
-				p.Debug(err)
-				return
-			}
-		} else if strings.HasPrefix(typeAsString, "interface{}") {
-			fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
-			if err != nil {
-				p.Debug(err)
-				return
-			}
-		} else if strings.HasPrefix(typeAsString, "struct{}") {
-			p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, fieldSchema, astField.Type.(*ast.StructType).Fields.List)
-		} else if !utils.IsBasicGoType(typeAsString) {
-			fieldSchemaSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString)
-			if err != nil {
-				p.Debug("parseSchemaPropertiesFromStructFields err:", err)
-			} else {
-				fieldSchema.ID = fieldSchemaSchemeaObjectID
-				schema, ok := p.KnownIDSchema[fieldSchemaSchemeaObjectID]
-				if ok {
-					fieldSchema.Type = schema.Type
-					if schema.Items != nil {
-						fieldSchema.Items = schema.Items
-					}
-				}
-				fieldSchema.Ref = utils.AddSchemaRefLinkPrefix(fieldSchemaSchemeaObjectID)
-			}
-		} else if utils.IsGoTypeOASType(typeAsString) {
-			fieldSchema.Type = utils.GoTypesOASTypes[typeAsString]
+		fieldSchema, err := p.parseStructField(pkgPath, pkgName, structSchema, astField)
+		if err != nil {
+			return
 		}
+		// 需要将 内嵌结构的 required 上移
+		structSchema.Required = append(structSchema.Required, fieldSchema.Required...)
+
 		if fieldSchema.Properties != nil {
 			for _, propertyName := range fieldSchema.Properties.Keys() {
 				_, exist := structSchema.Properties.Get(propertyName)
@@ -440,6 +278,7 @@ astFieldsLoop:
 		} else if len(fieldSchema.Ref) != 0 && len(fieldSchema.ID) != 0 {
 			refSchema, ok := p.KnownIDSchema[fieldSchema.ID]
 			if ok {
+				structSchema.Required = append(structSchema.Required, refSchema.Required...)
 				for _, propertyName := range refSchema.Properties.Keys() {
 					refPropertySchema, _ := refSchema.Properties.Get(propertyName)
 					_, disabled := structSchema.DisabledFieldNames[refPropertySchema.(*SchemaObject).FieldName]
@@ -450,7 +289,6 @@ astFieldsLoop:
 					if exist {
 						continue
 					}
-
 					structSchema.Properties.Set(propertyName, refPropertySchema)
 				}
 			}
