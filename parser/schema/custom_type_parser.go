@@ -189,6 +189,7 @@ func (p *parser) parseStructField(pkgPath, pkgName string, structSchema *SchemaO
 			return
 		}
 	} else if strings.HasPrefix(typeAsString, "struct{}") {
+		fieldSchema.Type = "object"
 		p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, fieldSchema, astField.Type.(*ast.StructType).Fields.List)
 	} else if !utils.IsBasicGoType(typeAsString) {
 		fieldSchemaSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString)
@@ -218,6 +219,9 @@ func (p *parser) parseSchemaPropertiesFromStructFields(pkgPath, pkgName string, 
 	structSchema.Properties = orderedmap.New()
 	if structSchema.DisabledFieldNames == nil {
 		structSchema.DisabledFieldNames = map[string]struct{}{}
+	}
+	if structSchema.ID == "eva.domain.client.request.ListAd" {
+		println("1")
 	}
 astFieldsLoop:
 	for _, astField := range astFields {
