@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hanyue2020/go-swagger3/generate"
 	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
 	"github.com/hanyue2020/go-swagger3/parser/model"
 	"github.com/hanyue2020/go-swagger3/parser/utils"
@@ -212,6 +213,27 @@ func (p *parser) parseFieldTagAndDoc(astField *ast.Field, structSchema, fieldSch
 
 		if fieldSchema.Example != nil && len(fieldSchema.Ref) != 0 {
 			fieldSchema.Ref = ""
+		}
+	} else {
+		if gen, ok := doc["@gen"]; ok {
+			data := strings.Split(gen, ":")
+			if genfunc, ok := generate.Gens[data[0]]; ok {
+				args := []string{}
+				if len(data) != 1 {
+					args = append(args, strings.Split(data[1], ",")...)
+				}
+				fieldSchema.Example = genfunc.Gen(args...)
+				switch fieldSchema.Type {
+				case "boolean":
+					fieldSchema.Example = cast.ToBool(fieldSchema.Example)
+				case "integer":
+					fieldSchema.Example = cast.ToInt64(fieldSchema.Example)
+				case "number":
+					fieldSchema.Example = cast.ToFloat64(fieldSchema.Example)
+				case "string":
+					fieldSchema.Example = cast.ToString(fieldSchema.Example)
+				}
+			}
 		}
 	}
 
