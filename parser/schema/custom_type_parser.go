@@ -220,9 +220,6 @@ func (p *parser) parseSchemaPropertiesFromStructFields(pkgPath, pkgName string, 
 	if structSchema.DisabledFieldNames == nil {
 		structSchema.DisabledFieldNames = map[string]struct{}{}
 	}
-	if structSchema.ID == "eva.domain.client.request.ListAd" {
-		println("1")
-	}
 astFieldsLoop:
 	for _, astField := range astFields {
 		if len(astField.Names) == 0 {
@@ -240,7 +237,9 @@ astFieldsLoop:
 		if disabled {
 			continue
 		}
+
 		continueLoop, name = p.parseFieldTagAndDoc(astField, structSchema, fieldSchema)
+
 		if continueLoop {
 			continue astFieldsLoop
 		}
@@ -264,6 +263,9 @@ astFieldsLoop:
 		if err != nil {
 			return
 		}
+		// 需要将 内嵌结构的 required 上移
+		structSchema.Required = append(structSchema.Required, fieldSchema.Required...)
+
 		if fieldSchema.Properties != nil {
 			for _, propertyName := range fieldSchema.Properties.Keys() {
 				_, exist := structSchema.Properties.Get(propertyName)
@@ -276,6 +278,7 @@ astFieldsLoop:
 		} else if len(fieldSchema.Ref) != 0 && len(fieldSchema.ID) != 0 {
 			refSchema, ok := p.KnownIDSchema[fieldSchema.ID]
 			if ok {
+				structSchema.Required = append(structSchema.Required, refSchema.Required...)
 				for _, propertyName := range refSchema.Properties.Keys() {
 					refPropertySchema, _ := refSchema.Properties.Get(propertyName)
 					_, disabled := structSchema.DisabledFieldNames[refPropertySchema.(*SchemaObject).FieldName]
@@ -286,7 +289,6 @@ astFieldsLoop:
 					if exist {
 						continue
 					}
-
 					structSchema.Properties.Set(propertyName, refPropertySchema)
 				}
 			}
