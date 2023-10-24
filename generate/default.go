@@ -20,5 +20,6 @@ var (
 		"unix_milli":  &adaptor.UnixMilli{},
 		"unix_second": &adaptor.UnixSecond{},
 		"pickup":      &adaptor.PickUp{},
+		"cn_city":     &adaptor.CnCity{},
 	}
 )

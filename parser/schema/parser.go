@@ -111,6 +111,12 @@ func (p *parser) parseFieldDoc(doc *ast.CommentGroup) map[string]string {
 		if !ok {
 			continue
 		}
+		if key == "@desc" {
+			if _, ok := attrs[key]; ok {
+				attrs[key] = attrs[key] + "\n" + value
+				continue
+			}
+		}
 		attrs[key] = value
 	}
 	return attrs

@@ -33,3 +33,9 @@ type CnAddress struct{}
 func (m *CnAddress) Gen(args ...string) any {
 	return chinaid.Address()
 }
+
+type CnCity struct{}
+
+func (m *CnCity) Gen(args ...string) any {
+	return chinaid.ProvinceAndCity()
+}
