@@ -9,6 +9,7 @@ import (
 	"github.com/hanyue2020/go-swagger3/parser/utils"
 	"github.com/iancoleman/orderedmap"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cast"
 )
 
 func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typeName string) (*SchemaObject, error) {
@@ -340,6 +341,15 @@ func (p *parser) getTypeAsString(fieldType interface{}) string {
 
 func parseEnumValues(enumString string) interface{} {
 	var result []interface{}
+	seg := strings.Split(enumString, "~")
+
+	// 对于区间范围 1~5 表示 enum[1,2,3,4,5]
+	if len(seg) == 2 {
+		for i := cast.ToInt(seg[0]); i <= cast.ToInt(seg[1]); i++ {
+			result = append(result, i)
+		}
+		return result
+	}
 	for _, currentEnumValue := range strings.Split(enumString, EnumValueSeparator) {
 		result = append(result, currentEnumValue)
 	}
