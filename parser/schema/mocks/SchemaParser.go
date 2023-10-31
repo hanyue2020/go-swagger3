@@ -38,7 +38,7 @@ func (_m *SchemaParser) GetPkgAst(pkgPath string) (map[string]*ast.Package, erro
 }
 
 // ParseSchemaObject provides a mock function with given fields: pkgPath, pkgName, typeName
-func (_m *SchemaParser) ParseSchemaObject(pkgPath string, pkgName string, typeName string) (*openApi3Schema.SchemaObject, error) {
+func (_m *SchemaParser) ParseSchemaObject(pkgPath string, pkgName string, typeName string,  astExpr ast.Expr) (*openApi3Schema.SchemaObject, error) {
 	ret := _m.Called(pkgPath, pkgName, typeName)
 
 	var r0 *openApi3Schema.SchemaObject
@@ -61,7 +61,7 @@ func (_m *SchemaParser) ParseSchemaObject(pkgPath string, pkgName string, typeNa
 }
 
 // RegisterType provides a mock function with given fields: pkgPath, pkgName, typeName
-func (_m *SchemaParser) RegisterType(pkgPath string, pkgName string, typeName string) (string, error) {
+func (_m *SchemaParser) RegisterType(pkgPath string, pkgName string, typeName string, astExpr ast.Expr) (string, error) {
 	ret := _m.Called(pkgPath, pkgName, typeName)
 
 	var r0 string

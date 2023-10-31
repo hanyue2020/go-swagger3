@@ -25,7 +25,7 @@ func (p *parser) parseParameters() error {
 		}
 
 		for _, astPackage := range astPkgs {
-			if err := p.parseParametersFromPackage(astPackage, pkgPath, pkgName); err != nil {
+			if err := p.parseParametersFromPackage(astPackage, pkgPath, pkgName, nil); err != nil {
 				return err
 			}
 		}
@@ -34,35 +34,35 @@ func (p *parser) parseParameters() error {
 	return nil
 }
 
-func (p *parser) parseParametersFromPackage(astPackage *ast.Package, pkgPath string, pkgName string) error {
+func (p *parser) parseParametersFromPackage(astPackage *ast.Package, pkgPath string, pkgName string, astExpr ast.Expr) error {
 	for _, astFile := range astPackage.Files {
-		if err := p.parseParametersFromFile(astFile, pkgPath, pkgName); err != nil {
+		if err := p.parseParametersFromFile(astFile, pkgPath, pkgName, astExpr); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (p *parser) parseParametersFromFile(astFile *ast.File, pkgPath string, pkgName string) error {
+func (p *parser) parseParametersFromFile(astFile *ast.File, pkgPath string, pkgName string, astExpr ast.Expr) error {
 	for _, astDeclaration := range astFile.Decls {
-		if err := p.parseFuncDeclaration(astDeclaration, pkgPath, pkgName); err != nil {
+		if err := p.parseFuncDeclaration(astDeclaration, pkgPath, pkgName, astExpr); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (p *parser) parseFuncDeclaration(astDeclaration ast.Decl, pkgPath string, pkgName string) error {
+func (p *parser) parseFuncDeclaration(astDeclaration ast.Decl, pkgPath string, pkgName string, astExpr ast.Expr) error {
 	astFuncDeclaration, ok := astDeclaration.(*ast.GenDecl)
 	if ok && astFuncDeclaration.Doc != nil && astFuncDeclaration.Doc.List != nil {
-		if err := p.parseParameter(pkgPath, pkgName, astFuncDeclaration.Doc.List); err != nil {
+		if err := p.parseParameter(pkgPath, pkgName, astFuncDeclaration.Doc.List, astExpr); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (p *parser) parseParameter(pkgPath string, pkgName string, astComments []*ast.Comment) error {
+func (p *parser) parseParameter(pkgPath string, pkgName string, astComments []*ast.Comment, astExpr ast.Expr) error {
 	var err error
 	for _, astComment := range astComments {
 		comment := strings.TrimSpace(strings.TrimLeft(astComment.Text, "/"))
@@ -74,14 +74,14 @@ func (p *parser) parseParameter(pkgPath string, pkgName string, astComments []*a
 		case "@headerparameters":
 			err = p.parseHeaderParameters(pkgPath, pkgName, strings.TrimSpace(comment[len(attribute):]))
 		case "@enum":
-			err = p.parseEnums(pkgPath, pkgName, strings.TrimSpace(comment[len(attribute):]))
+			err = p.parseEnums(pkgPath, pkgName, strings.TrimSpace(comment[len(attribute):]), astExpr)
 		}
 	}
 	return err
 }
 
-func (p *parser) parseEnums(pkgPath string, pkgName string, comment string) error {
-	schema, err := p.schemaParser.ParseSchemaObject(pkgPath, pkgName, comment)
+func (p *parser) parseEnums(pkgPath string, pkgName string, comment string, astExpr ast.Expr) error {
+	schema, err := p.schemaParser.ParseSchemaObject(pkgPath, pkgName, comment, astExpr)
 	if err != nil {
 		return fmt.Errorf("parseEnums can not parse enum schema %s", comment)
 	}
@@ -101,7 +101,7 @@ func (p *parser) parseEnums(pkgPath string, pkgName string, comment string) erro
 }
 
 func (p *parser) parseHeaderParameters(pkgPath string, pkgName string, comment string) error {
-	schema, err := p.schemaParser.ParseSchemaObject(pkgPath, pkgName, comment)
+	schema, err := p.schemaParser.ParseSchemaObject(pkgPath, pkgName, comment, nil)
 	if err != nil {
 		return err
 	}
