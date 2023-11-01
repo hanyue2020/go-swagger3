@@ -53,7 +53,7 @@ func (p *parser) parseRequestBody(pkgPath string, pkgName string, operation *oas
 }
 
 func (p *parser) parseGoBasicTypeOrStructType(pkgPath string, pkgName string, operation *oas.OperationObject, matches []string) error {
-	typeName, err := p.RegisterType(pkgPath, pkgName, matches[3])
+	typeName, err := p.RegisterType(pkgPath, pkgName, matches[3], nil)
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (p *parser) parseGoBasicTypeOrStructType(pkgPath string, pkgName string, op
 }
 
 func (p *parser) parseArrayMapOrTimeType(pkgPath string, pkgName string, operation *oas.OperationObject, goType string) error {
-	parsedSchemaObject, err := p.ParseSchemaObject(pkgPath, pkgName, goType)
+	parsedSchemaObject, err := p.ParseSchemaObject(pkgPath, pkgName, goType, nil)
 	if err != nil {
 		p.Debug("parseResponseComment cannot parse goType", goType)
 		return err
@@ -98,7 +98,7 @@ func (p *parser) appendQueryParam(pkgPath string, pkgName string, operation *oas
 }
 
 func (p *parser) appendTimeParam(pkgPath string, pkgName string, operation *oas.OperationObject, parameterObject oas.ParameterObject, goType string) (err error) {
-	parameterObject.Schema, err = p.ParseSchemaObject(pkgPath, pkgName, goType)
+	parameterObject.Schema, err = p.ParseSchemaObject(pkgPath, pkgName, goType, nil)
 	if err != nil {
 		p.Debug("parseResponseComment cannot parse goType", goType)
 	}
@@ -116,7 +116,7 @@ func (p *parser) appendGoTypeParams(parameterObject oas.ParameterObject, goType 
 }
 
 func (p *parser) appendModelSchemaRef(pkgPath string, pkgName string, operation *oas.OperationObject, parameterObject oas.ParameterObject, goType string) error {
-	typeName, err := p.RegisterType(pkgPath, pkgName, goType)
+	typeName, err := p.RegisterType(pkgPath, pkgName, goType, nil)
 	if err != nil {
 		p.Debug("parse param model type failed", goType)
 		return err

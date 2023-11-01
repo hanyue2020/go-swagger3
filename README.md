@@ -87,7 +87,6 @@ The service description comments can be located in any of your .go files. They p
 ``` go
 // @Version 1.0.0
 // @Title Backend API
-// @Description API usually works as expected. But sometimes its not true.
 // @ContactName Parvez
 // @ContactEmail abce@email.com
 // @ContactURL http://someurl.oxox
@@ -100,23 +99,47 @@ The service description comments can be located in any of your .go files. They p
 // @SecurityScheme AuthorizationHeader http bearer Input your token
 ```
 
+`项目的desc,从README.md中获取,以便能更好的获取markdown的格式输出`
 ### Handler Functions
 
 By adding comments to your handler func godoc, you can document individual actions as well as their input and output.
 
 ``` go
+
+type ListNewsRequest struct {
+	Page     int32 `json:"page"`  // 页号
+	PageSize int32 `json:"page_size"` // 页大小
+	Filters  struct {
+		Status   int32  `json:"status"`    // 状态 1 上架 2 下架
+		Type     int32  `json:"type"`      // 类型
+		Author   string `json:"author"`    // 作者
+		Lang     string `json:"lang"`      // 语言
+		Title    string `json:"title"`     // 标题
+		SubTitle string `json:"sub_title"` // 子标题
+		Content  string `json:"content"`   // 内容
+		Tag      string `json:"tag"`       // tag
+	} `json:"filters"` // 过滤项
+}
+
 type User struct {
-  ID   uint64 `json:"id" example:"100" description:"User identity"`
-  Name string `json:"name" example:"Parvez"`
+  // @example 100
+  // @desc User identity
+  ID   uint64 `json:"id"`
+  // @example Parvez
+  Name string `json:"name"`
+  // @enum 1,2,3
+  Type int8  `json:"type"`
 }
 
 type UsersResponse struct {
-  Data []Users `json:"users" example:"[{\"id\":100, \"name\":\"Parvez\"}]"`
+  // @example [{"id":100, "name":"Parvez"}]
+  Data []Users `json:"users"`
 }
 
 type Error struct {
   Code string `json:"code"`
-  Msg  string `json:"msg" skip:"true"`
+  // @skip true
+  Msg  string `json:"msg"`
   // use skip:"true" if you want to skip the field in the documentation spec
 }
 
@@ -152,6 +175,18 @@ func GetGroupUsers() {
 func PostUser() {
   // ...
 }
+
+
+// @Title Get news list.
+// @Description news list.
+// @Param  request  body  ListNewsRequest  true  "news list."
+// @Success  200  object  News           "NewsResponse JSON"
+// @Failure  400  object  ErrorResponse  "ErrorResponse JSON"
+// @Resource news
+// @Route /api/news [post]
+func ListNews() {
+  // ...
+}
 ```
 
 #### Title And Description
@@ -180,7 +215,8 @@ One can also override example for an object with `override-example` key in struc
 eg -
 ``` go
 type Request struct {
-    version  model.Version `"json:"Version" override-example:"11.0.0"`
+    // @override-example 11.0.0
+    version  model.Version `"json:"Version"`
 }
 ```
 
@@ -244,7 +280,9 @@ type Request struct {
 // @Enum CountriesEnum
 type CountriesEnum struct {
     // Create the field name with same as struct name
-    CountriesEnum string `enum:"india,china,mexico,japan" example:"india"`
+    // @enum india,china,mexico,japan
+    // @example india
+    CountriesEnum string `json:"CountriesEnum"`
 }
 ```
 
@@ -252,8 +290,10 @@ type CountriesEnum struct {
 
 ``` go
 type Request struct {
-  Name string `json:"name" example:"Parvez"`
-  Country string `json:"country" $ref:"CountriesEnum"`
+  // @example Parvez
+  Name string `json:"name"`
+  // @ref CountriesEnum
+  Country string `json:"country"`
 }
 
 ```

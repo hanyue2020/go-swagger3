@@ -8,7 +8,7 @@ import (
 )
 
 func (p *parser) parseHeaders(pkgPath string, pkgName string, operation *oas.OperationObject, comment string) error {
-	schema, err := p.ParseSchemaObject(pkgPath, pkgName, comment)
+	schema, err := p.ParseSchemaObject(pkgPath, pkgName, comment, nil)
 	if err != nil {
 		return err
 	}

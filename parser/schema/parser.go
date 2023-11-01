@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hanyue2020/go-swagger3/generate"
 	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
 	"github.com/hanyue2020/go-swagger3/parser/model"
 	"github.com/hanyue2020/go-swagger3/parser/utils"
@@ -18,8 +19,8 @@ import (
 
 type Parser interface {
 	GetPkgAst(pkgPath string) (map[string]*ast.Package, error)
-	RegisterType(pkgPath, pkgName, typeName string) (string, error)
-	ParseSchemaObject(pkgPath, pkgName, typeName string) (*SchemaObject, error)
+	RegisterType(pkgPath, pkgName, typeName string, astExpr ast.Expr) (string, error)
+	ParseSchemaObject(pkgPath, pkgName, typeName string, astExpr ast.Expr) (*SchemaObject, error)
 }
 
 type parser struct {
@@ -50,7 +51,7 @@ func (p *parser) GetPkgAst(pkgPath string) (map[string]*ast.Package, error) {
 	return astPackages, nil
 }
 
-func (p *parser) RegisterType(pkgPath, pkgName, typeName string) (string, error) {
+func (p *parser) RegisterType(pkgPath, pkgName, typeName string, astExpr ast.Expr) (string, error) {
 	var registerTypeName string
 
 	if utils.IsBasicGoType(typeName) || utils.IsInterfaceType(typeName) {
@@ -63,7 +64,7 @@ func (p *parser) RegisterType(pkgPath, pkgName, typeName string) (string, error)
 		}
 		return utils.GenSchemaObjectID(pkgName, typeName), nil
 	} else {
-		schemaObject, err := p.ParseSchemaObject(pkgPath, pkgName, typeName)
+		schemaObject, err := p.ParseSchemaObject(pkgPath, pkgName, typeName, astExpr)
 		if err != nil {
 			return "", err
 		}
@@ -76,13 +77,13 @@ func (p *parser) RegisterType(pkgPath, pkgName, typeName string) (string, error)
 	return registerTypeName, nil
 }
 
-func (p *parser) ParseSchemaObject(pkgPath, pkgName, typeName string) (*SchemaObject, error) {
-	schemaObject, err, isBasicType := p.parseBasicTypeSchemaObject(pkgPath, pkgName, typeName)
+func (p *parser) ParseSchemaObject(pkgPath, pkgName, typeName string, astExpr ast.Expr) (*SchemaObject, error) {
+	schemaObject, err, isBasicType := p.parseBasicTypeSchemaObject(pkgPath, pkgName, typeName, astExpr)
 	if isBasicType {
 		return schemaObject, err
 	}
 
-	return p.parseCustomTypeSchemaObject(pkgPath, pkgName, typeName)
+	return p.parseCustomTypeSchemaObject(pkgPath, pkgName, typeName, astExpr)
 }
 
 func (p *parser) parseDocAttributeAndValue(comment string) (string, string, bool) {
@@ -109,6 +110,12 @@ func (p *parser) parseFieldDoc(doc *ast.CommentGroup) map[string]string {
 		key, value, ok := p.parseDocAttributeAndValue(strings.TrimSpace(comment))
 		if !ok {
 			continue
+		}
+		if key == "@desc" {
+			if _, ok := attrs[key]; ok {
+				attrs[key] = attrs[key] + "\n" + value
+				continue
+			}
 		}
 		attrs[key] = value
 	}
@@ -212,6 +219,27 @@ func (p *parser) parseFieldTagAndDoc(astField *ast.Field, structSchema, fieldSch
 
 		if fieldSchema.Example != nil && len(fieldSchema.Ref) != 0 {
 			fieldSchema.Ref = ""
+		}
+	} else {
+		if gen, ok := doc["@gen"]; ok {
+			data := strings.Split(gen, ":")
+			if genfunc, ok := generate.Gens[data[0]]; ok {
+				args := []string{}
+				if len(data) != 1 {
+					args = append(args, strings.Split(data[1], ",")...)
+				}
+				fieldSchema.Example = genfunc.Gen(args...)
+				switch fieldSchema.Type {
+				case "boolean":
+					fieldSchema.Example = cast.ToBool(fieldSchema.Example)
+				case "integer":
+					fieldSchema.Example = cast.ToInt64(fieldSchema.Example)
+				case "number":
+					fieldSchema.Example = cast.ToFloat64(fieldSchema.Example)
+				case "string":
+					fieldSchema.Example = cast.ToString(fieldSchema.Example)
+				}
+			}
 		}
 	}
 

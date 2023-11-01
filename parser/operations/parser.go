@@ -51,8 +51,12 @@ func (p *parser) parseOperationFromComment(pkgPath string, pkgName string, comme
 	switch strings.ToLower(attribute) {
 	case "@title":
 		operation.Summary = strings.TrimSpace(comment[len(attribute):])
-	case "@description":
-		operation.Description = strings.Join([]string{operation.Description, strings.TrimSpace(comment[len(attribute):])}, " ")
+	case "@description", "@desc":
+		if operation.Description == "" {
+			operation.Description = strings.Join([]string{operation.Description, strings.TrimSpace(comment[len(attribute):])}, " ")
+		} else {
+			operation.Description += "\n" + strings.TrimSpace(comment[len(attribute):])
+		}
 	case "@param":
 		return p.parseParamComment(pkgPath, pkgName, operation, strings.TrimSpace(comment[len(attribute):]))
 	case "@header":

@@ -102,7 +102,11 @@ func (p *parser) parseOpenApiInfo(attribute string, value string) {
 	case "@info.title", "@title":
 		p.OpenAPI.Info.Title = value
 	case "@info.description", "@info.desc", "@desc", "@description":
-		p.OpenAPI.Info.Description = value
+		if p.OpenAPI.Info.Description == "" {
+			p.OpenAPI.Info.Description = value
+		} else {
+			p.OpenAPI.Info.Description += "\n" + value
+		}
 	case "@info.termsofserviceurl":
 		p.OpenAPI.Info.TermsOfService = value
 	case "@contactname", "@contactemail", "contacturl":

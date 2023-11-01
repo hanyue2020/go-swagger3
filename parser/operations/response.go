@@ -64,7 +64,7 @@ func (p *parser) complexResponseObject(pkgPath, pkgName, typ string, responseObj
 	re := regexp.MustCompile(`\[\w*\]`)
 	goType := re.ReplaceAllString(typ, "[]")
 	if strings.HasPrefix(goType, "map[]") {
-		schema, err := p.ParseSchemaObject(pkgPath, pkgName, goType)
+		schema, err := p.ParseSchemaObject(pkgPath, pkgName, goType, nil)
 		if err != nil {
 			p.Debug("parseResponseComment cannot parse goType", goType)
 		}
@@ -73,7 +73,7 @@ func (p *parser) complexResponseObject(pkgPath, pkgName, typ string, responseObj
 		}
 	} else if strings.HasPrefix(goType, "[]") {
 		goType = strings.Replace(goType, "[]", "", -1)
-		typeName, err := p.RegisterType(pkgPath, pkgName, goType)
+		typeName, err := p.RegisterType(pkgPath, pkgName, goType, nil)
 		if err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ func (p *parser) complexResponseObject(pkgPath, pkgName, typ string, responseObj
 			},
 		}
 	} else {
-		typeName, err := p.RegisterType(pkgPath, pkgName, typ)
+		typeName, err := p.RegisterType(pkgPath, pkgName, typ, nil)
 		if err != nil {
 			return err
 		}

@@ -8,10 +8,10 @@ import (
 	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
 	"github.com/hanyue2020/go-swagger3/parser/utils"
 	"github.com/iancoleman/orderedmap"
-	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cast"
 )
 
-func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typeName string) (*SchemaObject, error) {
+func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typeName string, astExpr ast.Expr) (*SchemaObject, error) {
 	var typeSpec *ast.TypeSpec
 	var exist bool
 	var schemaObject SchemaObject
@@ -21,7 +21,7 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 	if len(typeNameParts) == 1 {
 		typeSpec, exist = p.getTypeSpec(pkgName, typeName)
 		if !exist {
-			log.Fatalf("Can not find definition of %s ast.TypeSpec. Current package %s", typeName, pkgName)
+			panic(fmt.Sprintf("Can not find definition of %s ast.TypeSpec. Current package %s", typeName, pkgName))
 		}
 		schemaObject.PkgName = pkgName
 		schemaObject.ID = utils.GenSchemaObjectID(pkgName, typeName)
@@ -91,7 +91,7 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 			typeName = typeNameParts[len(typeNameParts)-1]
 		}
 		if !utils.IsBasicGoType(typeName) {
-			_, err := p.RegisterType(pkgPath, pkgName, typeName)
+			_, err := p.RegisterType(pkgPath, pkgName, typeName, astExpr)
 			if err != nil {
 				p.Debugf("ParseSchemaObject parse array items err: %s", err.Error())
 			}
@@ -102,7 +102,7 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 		typeAsString := p.getTypeAsString(astArrayType.Elt)
 		typeAsString = strings.TrimLeft(typeAsString, "*")
 		if !utils.IsBasicGoType(typeAsString) {
-			schemaItemsSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString)
+			schemaItemsSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString, astExpr)
 			if err != nil {
 				p.Debugf("ParseSchemaObject parse array items err: %s", err.Error())
 			} else {
@@ -119,7 +119,7 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 		typeAsString := p.getTypeAsString(astMapType.Value)
 		typeAsString = strings.TrimLeft(typeAsString, "*")
 		if !utils.IsBasicGoType(typeAsString) {
-			schemaItemsSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString)
+			schemaItemsSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString, astExpr)
 			if err != nil {
 				p.Debugf("ParseSchemaObject parse array items err: %s", err.Error())
 			} else {
@@ -143,56 +143,43 @@ func (p *parser) getTypeSpec(pkgName, typeName string) (*ast.TypeSpec, bool) {
 	}
 	return astTypeSpec, true
 }
-func (p *parser) parseStructField(pkgPath, pkgName string, structSchema *SchemaObject, astField *ast.Field) (fieldSchema *SchemaObject, err error) {
+func (p *parser) parseStructField(pkgPath, pkgName string, structSchema *SchemaObject, astExpr ast.Expr) (fieldSchema *SchemaObject, err error) {
 	fieldSchema = &SchemaObject{}
-	typeAsString := p.getTypeAsString(astField.Type)
+	typeAsString := p.getTypeAsString(astExpr)
 	typeAsString = strings.TrimLeft(typeAsString, "*")
-	if typeAsString == "[]struct{}" {
-		array := astField.Type.(*ast.ArrayType)
-		fieldSchema.Type = "array"
-		fieldSchema.Items = &SchemaObject{}
-		item := array.Elt.(*ast.StructType)
-		p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, fieldSchema.Items, item.Fields.List)
-	} else if strings.HasPrefix(typeAsString, "[]") {
-		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
+
+	if strings.HasPrefix(typeAsString, "[]") {
+		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString, astExpr)
 		if err != nil {
 			p.Debug(err)
 			return
 		}
-	} else if typeAsString == "map[]struct{}" {
-		mapType := astField.Type.(*ast.MapType)
-		fieldSchema.Type = "object"
-
-		fieldSchema.Properties = orderedmap.New()
-		schemaProperty := &SchemaObject{Type: "object", Properties: orderedmap.New()}
-		fieldSchema.Properties.Set("key", schemaProperty)
-		// 处理value
-		value := mapType.Value.(*ast.StructType)
-		p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, schemaProperty, value.Fields.List)
-
 	} else if strings.HasPrefix(typeAsString, "map[]") {
-		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
+		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString, astExpr)
 		if err != nil {
 			p.Debug(err)
 			return
 		}
 	} else if typeAsString == "time.Time" {
-		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
+		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString, astExpr)
 		if err != nil {
 			p.Debug(err)
 			return
 		}
 	} else if strings.HasPrefix(typeAsString, "interface{}") {
-		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString)
+		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString, astExpr)
 		if err != nil {
 			p.Debug(err)
 			return
 		}
 	} else if strings.HasPrefix(typeAsString, "struct{}") {
-		fieldSchema.Type = "object"
-		p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, fieldSchema, astField.Type.(*ast.StructType).Fields.List)
+		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString, astExpr)
+		if err != nil {
+			p.Debug(err)
+			return
+		}
 	} else if !utils.IsBasicGoType(typeAsString) {
-		fieldSchemaSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString)
+		fieldSchemaSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString, astExpr)
 		if err != nil {
 			p.Debug("parseSchemaPropertiesFromStructFields err:", err)
 		} else {
@@ -225,7 +212,7 @@ astFieldsLoop:
 		if len(astField.Names) == 0 {
 			continue
 		}
-		fieldSchema, err := p.parseStructField(pkgPath, pkgName, structSchema, astField)
+		fieldSchema, err := p.parseStructField(pkgPath, pkgName, structSchema, astField.Type)
 		if err != nil {
 			return
 		}
@@ -259,7 +246,7 @@ astFieldsLoop:
 		if len(astField.Names) > 0 {
 			continue
 		}
-		fieldSchema, err := p.parseStructField(pkgPath, pkgName, structSchema, astField)
+		fieldSchema, err := p.parseStructField(pkgPath, pkgName, structSchema, astField.Type)
 		if err != nil {
 			return
 		}
@@ -340,6 +327,15 @@ func (p *parser) getTypeAsString(fieldType interface{}) string {
 
 func parseEnumValues(enumString string) interface{} {
 	var result []interface{}
+	seg := strings.Split(enumString, "~")
+
+	// 对于区间范围 1~5 表示 enum[1,2,3,4,5]
+	if len(seg) == 2 {
+		for i := cast.ToInt(seg[0]); i <= cast.ToInt(seg[1]); i++ {
+			result = append(result, i)
+		}
+		return result
+	}
 	for _, currentEnumValue := range strings.Split(enumString, EnumValueSeparator) {
 		result = append(result, currentEnumValue)
 	}

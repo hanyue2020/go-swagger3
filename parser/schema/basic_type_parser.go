@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"go/ast"
 	"strings"
 
 	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
@@ -8,16 +9,20 @@ import (
 	"github.com/iancoleman/orderedmap"
 )
 
-func (p *parser) parseBasicTypeSchemaObject(pkgPath string, pkgName string, typeName string) (*SchemaObject, error, bool) {
+func (p *parser) parseBasicTypeSchemaObject(pkgPath string, pkgName string, typeName string, astExpr ast.Expr) (*SchemaObject, error, bool) {
 	var schemaObject SchemaObject
 	var err error
 	// handler basic and some specific typeName
 	if strings.HasPrefix(typeName, "[]") {
-		return p.parseArrayType(pkgPath, pkgName, typeName, schemaObject, err)
+		arrayType := astExpr.(*ast.ArrayType)
+		return p.parseArrayType(pkgPath, pkgName, typeName, schemaObject, err, arrayType.Elt)
 	} else if strings.HasPrefix(typeName, "map[]") {
-		return p.parseMapType(pkgPath, pkgName, typeName, schemaObject)
+		mapType := astExpr.(*ast.MapType)
+		return p.parseMapType(pkgPath, pkgName, typeName, schemaObject, mapType.Value)
 	} else if typeName == "time.Time" {
 		return p.parseTimeType(schemaObject)
+	} else if strings.HasPrefix(typeName, "struct{}") {
+		return p.parseAnonymousStructType(pkgPath, pkgName, typeName, astExpr)
 	} else if strings.HasPrefix(typeName, "interface{}") {
 		return p.parseInterfaceType()
 	} else if utils.IsGoTypeOASType(typeName) {
@@ -35,8 +40,14 @@ func (p *parser) parseInterfaceType() (*SchemaObject, error, bool) {
 	return &SchemaObject{Type: "object"}, nil, true
 }
 
-func (p *parser) parseAnonymousStructType() (*SchemaObject, error, bool) {
-	return &SchemaObject{Type: "object"}, nil, false
+func (p *parser) parseAnonymousStructType(pkgPath, pkgName, typeName string, astExpr ast.Expr) (*SchemaObject, error, bool) {
+	obj := &SchemaObject{Type: "object"}
+	switch astExpr.(type) {
+	case *ast.StructType:
+		p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, obj, astExpr.(*ast.StructType).Fields.List)
+		return obj, nil, true
+	}
+	return obj, nil, false
 }
 
 func (p *parser) parseTimeType(schemaObject SchemaObject) (*SchemaObject, error, bool) {
@@ -45,7 +56,7 @@ func (p *parser) parseTimeType(schemaObject SchemaObject) (*SchemaObject, error,
 	return &schemaObject, nil, true
 }
 
-func (p *parser) parseArrayType(pkgPath string, pkgName string, typeName string, schemaObject SchemaObject, err error) (*SchemaObject, error, bool) {
+func (p *parser) parseArrayType(pkgPath string, pkgName string, typeName string, schemaObject SchemaObject, err error, astExpr ast.Expr) (*SchemaObject, error, bool) {
 	schemaObject.Type = "array"
 	itemTypeName := typeName[2:]
 	schema, ok := p.KnownIDSchema[utils.GenSchemaObjectID(pkgName, itemTypeName)]
@@ -53,14 +64,14 @@ func (p *parser) parseArrayType(pkgPath string, pkgName string, typeName string,
 		schemaObject.Items = &SchemaObject{Ref: utils.AddSchemaRefLinkPrefix(schema.ID)}
 		return &schemaObject, nil, true
 	}
-	schemaObject.Items, err = p.ParseSchemaObject(pkgPath, pkgName, itemTypeName)
+	schemaObject.Items, err = p.ParseSchemaObject(pkgPath, pkgName, itemTypeName, astExpr)
 	if err != nil {
 		return nil, err, true
 	}
 	return &schemaObject, nil, true
 }
 
-func (p *parser) parseMapType(pkgPath string, pkgName string, typeName string, schemaObject SchemaObject) (*SchemaObject, error, bool) {
+func (p *parser) parseMapType(pkgPath string, pkgName string, typeName string, schemaObject SchemaObject, astExpr ast.Expr) (*SchemaObject, error, bool) {
 	schemaObject.Type = "object"
 	itemTypeName := typeName[5:]
 	schema, ok := p.KnownIDSchema[utils.GenSchemaObjectID(pkgName, itemTypeName)]
@@ -68,7 +79,7 @@ func (p *parser) parseMapType(pkgPath string, pkgName string, typeName string, s
 		schemaObject.Items = &SchemaObject{Ref: utils.AddSchemaRefLinkPrefix(schema.ID)}
 		return &schemaObject, nil, true
 	}
-	schemaProperty, err := p.ParseSchemaObject(pkgPath, pkgName, itemTypeName)
+	schemaProperty, err := p.ParseSchemaObject(pkgPath, pkgName, itemTypeName, astExpr)
 	if err != nil {
 		return nil, err, true
 	}
