@@ -274,13 +274,65 @@ func (p *parser) parseFieldTagAndDoc(astField *ast.Field, structSchema, fieldSch
 			fieldSchema.Enum = parseEnumValues(enumValues)
 		}
 	}
+	// 解析multipleOf
+	if v := doc["@multipleOf"]; v != "" {
+		switch fieldSchema.Type {
+		case "integer":
+			fieldSchema.MultipleOf = cast.ToInt64(v)
+		case "number":
+			fieldSchema.MultipleOf = cast.ToFloat64(v)
+		}
+	}
+	// 解析maxLength
+	if v := doc["@maxLength"]; v != "" {
+		switch fieldSchema.Type {
+		case "string":
+			fieldSchema.MaxLength = cast.ToInt32(v)
+		}
+	}
+	// 解析minLength
+	if v := doc["@minLength"]; v != "" {
+		switch fieldSchema.Type {
+		case "string":
+			fieldSchema.MinLength = cast.ToInt32(v)
+		}
+	}
+	// 解析exclusiveMaximum
+	if v := doc["@exclusiveMaximum"]; v != "" {
+		switch fieldSchema.Type {
+		case "integer":
+			fieldSchema.ExclusiveMaximum = cast.ToInt64(v)
+		case "number":
+			fieldSchema.ExclusiveMaximum = cast.ToFloat64(v)
+		}
+	}
+	// 解析exclusiveMinimum
+	if v := doc["@exclusiveMaximum"]; v != "" {
+		switch fieldSchema.Type {
+		case "integer":
+			fieldSchema.ExclusiveMinimum = cast.ToInt64(v)
+		case "number":
+			fieldSchema.ExclusiveMinimum = cast.ToFloat64(v)
+		}
+	}
 	// 解析maximum
 	if v := doc["@maximum"]; v != "" {
-		fieldSchema.Maximum = cast.ToInt64(v)
+		switch fieldSchema.Type {
+		case "integer":
+			fieldSchema.Maximum = cast.ToInt64(v)
+		case "number":
+			fieldSchema.Maximum = cast.ToFloat64(v)
+		}
 	}
 	// 解析minimum
 	if v := doc["@minimum"]; v != "" {
 		fieldSchema.Minimum = cast.ToInt64(v)
+		switch fieldSchema.Type {
+		case "integer":
+			fieldSchema.Minimum = cast.ToInt64(v)
+		case "number":
+			fieldSchema.Minimum = cast.ToFloat64(v)
+		}
 	}
 	// 解析title
 	if v := doc["@title"]; v != "" {
@@ -292,7 +344,10 @@ func (p *parser) parseFieldTagAndDoc(astField *ast.Field, structSchema, fieldSch
 	}
 	// 解析format
 	if v := doc["@format"]; v != "" {
-		fieldSchema.Format = v
+		switch fieldSchema.Type {
+		case "string":
+			fieldSchema.Format = v
+		}
 	}
 	// 解析default
 	if v := doc["@default"]; v != "" {

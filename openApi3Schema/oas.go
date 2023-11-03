@@ -137,8 +137,10 @@ type SchemaObject struct {
 	Required           []string               `json:"required,omitempty"`
 	Properties         *orderedmap.OrderedMap `json:"properties,omitempty"`
 	Description        string                 `json:"description,omitempty"`
-	Minimum            int64                  `json:"minimum,omitempty"`
-	Maximum            int64                  `json:"maximum,omitempty"`
+	Minimum            any                    `json:"minimum,omitempty"`
+	Maximum            any                    `json:"maximum,omitempty"`
+	ExclusiveMaximum   any                    `json:"exclusiveMaximum,omitempty"`
+	ExclusiveMinimum   any                    `json:"exclusiveMinimum,omitempty"`
 	Items              *SchemaObject          `json:"items,omitempty"` // use ptr to prevent recursive error
 	Example            interface{}            `json:"example,omitempty"`
 	Deprecated         bool                   `json:"deprecated,omitempty"`
@@ -146,12 +148,11 @@ type SchemaObject struct {
 	Enum               interface{}            `json:"enum,omitempty"`
 	Title              string                 `json:"title,omitempty"`
 	Default            any                    `json:"default,omitempty"`
-	// Title
-	// MultipleOf
-	// ExclusiveMaximum
-	// ExclusiveMinimum
-	// MaxLength
-	// MinLength
+	MultipleOf         any                    `json:"multipleOf,omitempty"`
+	MaxLength          int32                  `json:"maxLength,omitempty"`
+	MinLength          int32                  `json:"minLength,omitempty"`
+	ReadOnly           bool                   `json:"read_only,omitempty"`
+	WriteOnly          bool                   `json:"write_only,omitempty"`
 	// Pattern
 	// MaxItems
 	// MinItems
@@ -164,8 +165,6 @@ type SchemaObject struct {
 	// Not
 	// AdditionalProperties
 	// Nullable
-	// ReadOnly
-	// WriteOnly
 	// XML
 	// ExternalDocs
 }
