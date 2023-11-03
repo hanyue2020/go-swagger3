@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/iancoleman/orderedmap v0.2.0
-	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cast v1.5.1
 	github.com/stretchr/testify v1.7.0

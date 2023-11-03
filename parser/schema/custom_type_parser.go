@@ -21,7 +21,7 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 	if len(typeNameParts) == 1 {
 		typeSpec, exist = p.getTypeSpec(pkgName, typeName)
 		if !exist {
-			panic(fmt.Sprintf("Can not find definition of %s ast.TypeSpec. Current package %s", typeName, pkgName))
+			panic(fmt.Sprintf("Can not find definition of %v ast.TypeSpec. Current package %v", typeName, pkgName))
 		}
 		schemaObject.PkgName = pkgName
 		schemaObject.ID = utils.GenSchemaObjectID(pkgName, typeName)
@@ -59,7 +59,6 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 						break
 					}
 				}
-				// p.debugf("guess %s ast.TypeSpec in package %s", guessTypeName, guessPkgName)
 				typeSpec, exist = p.getTypeSpec(guessPkgName, guessTypeName)
 				if exist {
 					break
@@ -69,64 +68,69 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 					return &schemaObject, nil
 				}
 			}
-
 			schemaObject.PkgName = guessPkgName
 			schemaObject.ID = utils.GenSchemaObjectID(guessPkgName, guessTypeName)
 			p.KnownIDSchema[schemaObject.ID] = &schemaObject
 		}
 		pkgPath, pkgName = guessPkgPath, guessPkgName
 	}
-
-	if astIdent, ok := typeSpec.Type.(*ast.Ident); ok {
-		if astIdent != nil {
+	switch typeSpec.Type.(type) {
+	case *ast.Ident:
+		if astIdent := typeSpec.Type.(*ast.Ident); astIdent != nil {
 			schemaObject.Type = astIdent.Name
 		}
-	} else if astStructType, ok := typeSpec.Type.(*ast.StructType); ok {
-		schemaObject.Type = "object"
-		if astStructType.Fields != nil {
-			p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, &schemaObject, astStructType.Fields.List)
-		}
-		typeNameParts := strings.Split(typeName, ".")
-		if len(typeNameParts) > 1 {
-			typeName = typeNameParts[len(typeNameParts)-1]
-		}
-		if !utils.IsBasicGoType(typeName) {
-			_, err := p.RegisterType(pkgPath, pkgName, typeName, astExpr)
-			if err != nil {
-				p.Debugf("ParseSchemaObject parse array items err: %s", err.Error())
+	case *ast.StructType:
+		if astStructType := typeSpec.Type.(*ast.StructType); astStructType != nil {
+			schemaObject.Type = "object"
+			if astStructType.Fields != nil {
+				p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, &schemaObject, astStructType.Fields.List)
+			}
+			typeNameParts := strings.Split(typeName, ".")
+			if len(typeNameParts) > 1 {
+				typeName = typeNameParts[len(typeNameParts)-1]
+			}
+			if !utils.IsBasicGoType(typeName) {
+				_, err := p.RegisterType(pkgPath, pkgName, typeName, astExpr)
+				if err != nil {
+					p.Debugf("ParseSchemaObject parse array items err: %s", err.Error())
+				}
 			}
 		}
-	} else if astArrayType, ok := typeSpec.Type.(*ast.ArrayType); ok {
-		schemaObject.Type = "array"
-		schemaObject.Items = &SchemaObject{}
-		typeAsString := p.getTypeAsString(astArrayType.Elt)
-		typeAsString = strings.TrimLeft(typeAsString, "*")
-		if !utils.IsBasicGoType(typeAsString) {
-			schemaItemsSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString, astExpr)
-			if err != nil {
-				p.Debugf("ParseSchemaObject parse array items err: %s", err.Error())
-			} else {
-				schemaObject.Items.Ref = utils.AddSchemaRefLinkPrefix(schemaItemsSchemeaObjectID)
+	case *ast.ArrayType:
+		if astArrayType := typeSpec.Type.(*ast.ArrayType); astArrayType != nil {
+			schemaObject.Type = "array"
+			schemaObject.Items = &SchemaObject{}
+			typeAsString := p.getTypeAsString(astArrayType.Elt)
+			typeAsString = strings.TrimLeft(typeAsString, "*")
+			if !utils.IsBasicGoType(typeAsString) {
+				schemaItemsSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString, astExpr)
+				if err != nil {
+					p.Debugf("ParseSchemaObject parse array items err: %s", err.Error())
+				} else {
+					schemaObject.Items.Ref = utils.AddSchemaRefLinkPrefix(schemaItemsSchemeaObjectID)
+				}
+			} else if utils.IsGoTypeOASType(typeAsString) {
+				schemaObject.Items.Type = utils.GoTypesOASTypes[typeAsString]
 			}
-		} else if utils.IsGoTypeOASType(typeAsString) {
-			schemaObject.Items.Type = utils.GoTypesOASTypes[typeAsString]
 		}
-	} else if astMapType, ok := typeSpec.Type.(*ast.MapType); ok {
-		schemaObject.Type = "object"
-		schemaObject.Properties = orderedmap.New()
-		propertySchema := &SchemaObject{}
-		schemaObject.Properties.Set("key", propertySchema)
-		typeAsString := p.getTypeAsString(astMapType.Value)
-		typeAsString = strings.TrimLeft(typeAsString, "*")
-		if !utils.IsBasicGoType(typeAsString) {
-			schemaItemsSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString, astExpr)
-			if err != nil {
-				p.Debugf("ParseSchemaObject parse array items err: %s", err.Error())
-			} else {
-				propertySchema.Ref = utils.AddSchemaRefLinkPrefix(schemaItemsSchemeaObjectID)
+	case *ast.MapType:
+		if astMapType := typeSpec.Type.(*ast.MapType); astMapType != nil {
+			schemaObject.Type = "object"
+			schemaObject.Properties = orderedmap.New()
+			propertySchema := &SchemaObject{}
+			schemaObject.Properties.Set("key", propertySchema)
+			typeAsString := p.getTypeAsString(astMapType.Value)
+			typeAsString = strings.TrimLeft(typeAsString, "*")
+			if !utils.IsBasicGoType(typeAsString) {
+				schemaItemsSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString, astExpr)
+				if err != nil {
+					p.Debugf("ParseSchemaObject parse array items err: %s", err.Error())
+				} else {
+					propertySchema.Ref = utils.AddSchemaRefLinkPrefix(schemaItemsSchemeaObjectID)
+				}
+			} else if utils.IsGoTypeOASType(typeAsString) {
+				propertySchema.Type = utils.GoTypesOASTypes[typeAsString]
 			}
-		} else if utils.IsGoTypeOASType(typeAsString) {
-			propertySchema.Type = utils.GoTypesOASTypes[typeAsString]
 		}
 	}
 	return &schemaObject, nil
@@ -284,45 +288,30 @@ astFieldsLoop:
 	}
 }
 
-func (p *parser) getTypeAsString(fieldType interface{}) string {
-	astArrayType, ok := fieldType.(*ast.ArrayType)
-	if ok {
-		return fmt.Sprintf("[]%v", p.getTypeAsString(astArrayType.Elt))
-	}
-
-	astMapType, ok := fieldType.(*ast.MapType)
-	if ok {
-		return fmt.Sprintf("map[]%v", p.getTypeAsString(astMapType.Value))
-	}
-
-	_, ok = fieldType.(*ast.InterfaceType)
-	if ok {
+func (p *parser) getTypeAsString(fieldType ast.Expr) string {
+	switch fieldType.(type) {
+	case *ast.ArrayType:
+		return fmt.Sprintf("[]%v", p.getTypeAsString(fieldType.(*ast.ArrayType).Elt))
+	case *ast.MapType:
+		return fmt.Sprintf("map[]%v", p.getTypeAsString(fieldType.(*ast.MapType).Value))
+	case *ast.InterfaceType:
 		return "interface{}"
-	}
-
-	astStarExpr, ok := fieldType.(*ast.StarExpr)
-	if ok {
-		// return fmt.Sprintf("*%v", p.getTypeAsString(astStarExpr.X))
-		return fmt.Sprintf("%v", p.getTypeAsString(astStarExpr.X))
-	}
-
-	astSelectorExpr, ok := fieldType.(*ast.SelectorExpr)
-	if ok {
-		packageNameIdent, _ := astSelectorExpr.X.(*ast.Ident)
+	case *ast.StarExpr:
+		return fmt.Sprintf("%v", p.getTypeAsString(fieldType.(*ast.StarExpr).X))
+	case *ast.StructType:
+		return "struct{}"
+	case *ast.SelectorExpr:
+		packageNameIdent, _ := fieldType.(*ast.SelectorExpr).X.(*ast.Ident)
 		if packageNameIdent != nil && packageNameIdent.Obj != nil && packageNameIdent.Obj.Decl != nil {
 			a, ok := packageNameIdent.Obj.Decl.(DECL)
 			if ok {
 				fmt.Println(a)
 			}
 		}
-
-		return packageNameIdent.Name + "." + astSelectorExpr.Sel.Name
+		return packageNameIdent.Name + "." + fieldType.(*ast.SelectorExpr).Sel.Name
+	default:
+		return fmt.Sprint(fieldType)
 	}
-	_, ok = fieldType.(*ast.StructType)
-	if ok {
-		return "struct{}"
-	}
-	return fmt.Sprint(fieldType)
 }
 
 func parseEnumValues(enumString string) interface{} {

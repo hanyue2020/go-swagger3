@@ -21,9 +21,12 @@ func (p *parser) parseBasicTypeSchemaObject(pkgPath string, pkgName string, type
 		return p.parseMapType(pkgPath, pkgName, typeName, schemaObject, mapType.Value)
 	} else if typeName == "time.Time" {
 		return p.parseTimeType(schemaObject)
+	} else if typeName == "decimal.Decimal" {
+		schemaObject.Type = "string"
+		return &schemaObject, nil, true
 	} else if strings.HasPrefix(typeName, "struct{}") {
 		return p.parseAnonymousStructType(pkgPath, pkgName, typeName, astExpr)
-	} else if strings.HasPrefix(typeName, "interface{}") {
+	} else if strings.HasPrefix(typeName, "interface{}") || typeName == "any" {
 		return p.parseInterfaceType()
 	} else if utils.IsGoTypeOASType(typeName) {
 		return p.parseBasicGoType(schemaObject, typeName)

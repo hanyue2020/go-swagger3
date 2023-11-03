@@ -274,5 +274,38 @@ func (p *parser) parseFieldTagAndDoc(astField *ast.Field, structSchema, fieldSch
 			fieldSchema.Enum = parseEnumValues(enumValues)
 		}
 	}
+	// 解析maximum
+	if v := doc["@maximum"]; v != "" {
+		fieldSchema.Maximum = cast.ToInt64(v)
+	}
+	// 解析minimum
+	if v := doc["@minimum"]; v != "" {
+		fieldSchema.Minimum = cast.ToInt64(v)
+	}
+	// 解析title
+	if v := doc["@title"]; v != "" {
+		fieldSchema.Title = v
+	}
+	// 解析deprecated
+	if v := doc["@deprecated"]; v != "" {
+		fieldSchema.Deprecated = cast.ToBool(v)
+	}
+	// 解析format
+	if v := doc["@format"]; v != "" {
+		fieldSchema.Format = v
+	}
+	// 解析default
+	if v := doc["@default"]; v != "" {
+		switch fieldSchema.Type {
+		case "boolean":
+			fieldSchema.Default = cast.ToBool(v)
+		case "integer":
+			fieldSchema.Default = cast.ToInt64(v)
+		case "number":
+			fieldSchema.Default = cast.ToFloat64(v)
+		default:
+			fieldSchema.Default = v
+		}
+	}
 	return
 }

@@ -137,17 +137,18 @@ type SchemaObject struct {
 	Required           []string               `json:"required,omitempty"`
 	Properties         *orderedmap.OrderedMap `json:"properties,omitempty"`
 	Description        string                 `json:"description,omitempty"`
+	Minimum            int64                  `json:"minimum,omitempty"`
+	Maximum            int64                  `json:"maximum,omitempty"`
 	Items              *SchemaObject          `json:"items,omitempty"` // use ptr to prevent recursive error
 	Example            interface{}            `json:"example,omitempty"`
 	Deprecated         bool                   `json:"deprecated,omitempty"`
 	Ref                string                 `json:"$ref,omitempty"` // Ref is used when SchemaObject is as a ReferenceObject
 	Enum               interface{}            `json:"enum,omitempty"`
-
+	Title              string                 `json:"title,omitempty"`
+	Default            any                    `json:"default,omitempty"`
 	// Title
 	// MultipleOf
-	// Maximum
 	// ExclusiveMaximum
-	// Minimum
 	// ExclusiveMinimum
 	// MaxLength
 	// MinLength
@@ -162,8 +163,6 @@ type SchemaObject struct {
 	// AnyOf
 	// Not
 	// AdditionalProperties
-	// Description
-	// Default
 	// Nullable
 	// ReadOnly
 	// WriteOnly
