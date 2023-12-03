@@ -13,7 +13,7 @@ func (p *parser) parseRouteComment(operation *oas.OperationObject, comment strin
 	sourceString := strings.TrimSpace(comment[len("@Router"):])
 
 	// /path [method]
-	re := regexp.MustCompile(`([\w\.\/\-{}]+)[^\[]+\[([^\]]+)`)
+	re := regexp.MustCompile(`([\w\.\/\-{}:]+)[^\[]+\[([^\]]+)`)
 	matches := re.FindStringSubmatch(sourceString)
 	if len(matches) != 3 {
 		return fmt.Errorf("Can not parse router comment \"%s\", skipped", comment)

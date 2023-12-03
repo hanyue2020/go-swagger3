@@ -26,10 +26,14 @@ type parser struct {
 	model.Utils
 }
 
-func NewParser(modulePath, mainFilePath, handlerPath string, debug, strict bool) *parser {
+func NewParser(modulePath, basicInfoPath, handlerPath string, debug, strict bool) *parser {
 	return &parser{
 		Utils: model.Utils{
-			Path:        getPaths(modulePath, mainFilePath, handlerPath),
+			Path: model.Path{
+				ModulePath:    modulePath,
+				BasicInfoPath: basicInfoPath,
+				HandlerPath:   handlerPath,
+			},
 			Flags:       geFlags(debug, strict),
 			PkgAndSpecs: initPkgAndSpecs(),
 		},
@@ -96,14 +100,6 @@ func geFlags(debug bool, strict bool) model.Flags {
 	return model.Flags{
 		RunInDebugMode:  debug,
 		RunInStrictMode: strict,
-	}
-}
-
-func getPaths(modulePath string, mainFilePath string, handlerPath string) model.Path {
-	return model.Path{
-		ModulePath:   modulePath,
-		MainFilePath: mainFilePath,
-		HandlerPath:  handlerPath,
 	}
 }
 

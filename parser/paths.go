@@ -20,8 +20,8 @@ func (p *parser) verifyAndSetPaths() error {
 		return err
 	}
 
-	// check mainFilePath is exist
-	if err := p.verifyMainFilePath(); err != nil {
+	// check basicInfoPath is exist
+	if err := p.verifyBasicInfoPath(); err != nil {
 		return err
 	}
 
@@ -96,31 +96,31 @@ func (p *parser) getModuleNameFromGoModFile() error {
 	return nil
 }
 
-func (p *parser) verifyMainFilePath() error {
-	if p.MainFilePath == "" {
+func (p *parser) verifyBasicInfoPath() error {
+	if p.BasicInfoPath == "" {
 		fns, err := filepath.Glob(filepath.Join(p.ModulePath, "*.go"))
 		if err != nil {
 			return err
 		}
 		for _, fn := range fns {
 			if utils.IsMainFile(fn) {
-				p.MainFilePath = fn
+				p.BasicInfoPath = fn
 				break
 			}
 		}
 	} else {
-		mainFileInfo, err := os.Stat(p.MainFilePath)
+		basicInfoPath, err := os.Stat(p.BasicInfoPath)
 		if err != nil {
 			if os.IsNotExist(err) {
 				return err
 			}
-			return fmt.Errorf("cannot get information of %s: %s", p.MainFilePath, err)
+			return fmt.Errorf("cannot get information of %s: %s", p.BasicInfoPath, err)
 		}
-		if mainFileInfo.IsDir() {
-			return fmt.Errorf("mainFilePath should not be a directory")
+		if basicInfoPath.IsDir() {
+			return fmt.Errorf("basicInfoPath should not be a directory")
 		}
 	}
-	p.Debugf("main file path: %s", p.MainFilePath)
+	p.Debugf("main file path: %s", p.BasicInfoPath)
 	return nil
 }
 

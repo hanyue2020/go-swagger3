@@ -50,10 +50,22 @@ func (p *parser) parsePathFromFile(astFile *ast.File, pkgPath string, pkgName st
 }
 
 func (p *parser) parsePathFromFuncDeclaration(astDeclaration ast.Decl, pkgPath string, pkgName string) error {
-	astFuncDeclaration, ok := astDeclaration.(*ast.FuncDecl)
-	if ok && astFuncDeclaration.Doc != nil && astFuncDeclaration.Doc.List != nil {
-		if err := p.operationParser.Parse(pkgPath, pkgName, astFuncDeclaration.Doc.List); err != nil {
-			return err
+	switch astDeclaration.(type) {
+	case *ast.FuncDecl:
+		astFuncDeclaration := astDeclaration.(*ast.FuncDecl)
+		if astFuncDeclaration.Doc != nil && astFuncDeclaration.Doc.List != nil {
+			if err := p.operationParser.Parse(pkgPath, pkgName, astFuncDeclaration.Doc.List); err != nil {
+				return err
+			}
+		}
+	case *ast.GenDecl:
+		astGenDeclaration := astDeclaration.(*ast.GenDecl)
+		for _, sp := range astGenDeclaration.Specs {
+			importSpec, ok := sp.(*ast.ImportSpec)
+			if !ok {
+				continue
+			}
+			p.Debug(importSpec.Path.Value, importSpec.Name)
 		}
 	}
 	return nil

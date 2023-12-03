@@ -152,6 +152,14 @@ func (p *parser) parseStructField(pkgPath, pkgName string, structSchema *SchemaO
 	typeAsString := p.getTypeAsString(astExpr)
 	typeAsString = strings.TrimLeft(typeAsString, "*")
 
+	switch typeAsString {
+	case "time.Time", "decimal.Decimal", "struct{}", "interface{}":
+		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString, astExpr)
+		if err != nil {
+			p.Debug(err)
+		}
+		return
+	}
 	if strings.HasPrefix(typeAsString, "[]") {
 		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString, astExpr)
 		if err != nil {
@@ -159,24 +167,6 @@ func (p *parser) parseStructField(pkgPath, pkgName string, structSchema *SchemaO
 			return
 		}
 	} else if strings.HasPrefix(typeAsString, "map[]") {
-		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString, astExpr)
-		if err != nil {
-			p.Debug(err)
-			return
-		}
-	} else if typeAsString == "time.Time" {
-		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString, astExpr)
-		if err != nil {
-			p.Debug(err)
-			return
-		}
-	} else if strings.HasPrefix(typeAsString, "interface{}") {
-		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString, astExpr)
-		if err != nil {
-			p.Debug(err)
-			return
-		}
-	} else if strings.HasPrefix(typeAsString, "struct{}") {
 		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString, astExpr)
 		if err != nil {
 			p.Debug(err)
@@ -194,8 +184,8 @@ func (p *parser) parseStructField(pkgPath, pkgName string, structSchema *SchemaO
 				if schema.Items != nil {
 					fieldSchema.Items = schema.Items
 				}
+				fieldSchema.Ref = utils.AddSchemaRefLinkPrefix(fieldSchemaSchemeaObjectID)
 			}
-			fieldSchema.Ref = utils.AddSchemaRefLinkPrefix(fieldSchemaSchemeaObjectID)
 		}
 	} else if utils.IsGoTypeOASType(typeAsString) {
 		fieldSchema.Type = utils.GoTypesOASTypes[typeAsString]

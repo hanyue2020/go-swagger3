@@ -18,7 +18,7 @@ type Utils struct {
 type Path struct {
 	ModulePath     string
 	ModuleName     string
-	MainFilePath   string
+	BasicInfoPath  string
 	HandlerPath    string
 	GoModFilePath  string
 	GoModCachePath string

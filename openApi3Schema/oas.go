@@ -12,16 +12,24 @@ const (
 	ContentTypeForm = "multipart/form-data"
 )
 
-type OpenAPIObject struct {
-	Version string         `json:"openapi"` // Required
-	Info    InfoObject     `json:"info"`    // Required
-	Servers []ServerObject `json:"servers,omitempty"`
-	Paths   PathsObject    `json:"paths"` // Required
+type ExternalDocs struct {
+	Description string `json:"description,omitempty"`
+	Url         string `json:"url,omitempty"`
+}
+type Tags struct {
+	Name         string        `json:"name,omitempty"`
+	Description  string        `json:"description,omitempty"`
+	ExternalDocs *ExternalDocs `json:"externalDocs,omitempty"`
+}
 
+type OpenAPIObject struct {
+	Version    string                `json:"openapi"` // Required
+	Info       InfoObject            `json:"info"`    // Required
+	Servers    []ServerObject        `json:"servers,omitempty"`
+	Paths      PathsObject           `json:"paths"`                // Required
 	Components ComponentsObject      `json:"components,omitempty"` // Required for Authorization header
 	Security   []map[string][]string `json:"security,omitempty"`
-
-	// Tags
+	Tags       []*Tags               `json:"tags,omitempty"`
 	// ExternalDocs
 }
 
@@ -66,7 +74,6 @@ type PathItemObject struct {
 	Options     *OperationObject `json:"options,omitempty"`
 	Head        *OperationObject `json:"head,omitempty"`
 	Trace       *OperationObject `json:"trace,omitempty"`
-
 	// Servers
 	// Parameters
 }
@@ -79,12 +86,11 @@ type OperationObject struct {
 	Description string             `json:"description,omitempty"`
 	Parameters  []ParameterObject  `json:"parameters,omitempty"`
 	RequestBody *RequestBodyObject `json:"requestBody,omitempty"`
-
+	OperationId string             `json:"operationId,omitempty"`
+	Deprecated  bool               `json:"deprecated,omitempty"`
 	// Tags
 	// ExternalDocs
-	// OperationID
 	// Callbacks
-	// Deprecated
 	// Security
 	// Servers
 }
@@ -153,7 +159,7 @@ type SchemaObject struct {
 	MinLength          int32                  `json:"minLength,omitempty"`
 	ReadOnly           bool                   `json:"read_only,omitempty"`
 	WriteOnly          bool                   `json:"write_only,omitempty"`
-	// Pattern
+	Pattern            string                 `json:"pattern,omitempty"`
 	// MaxItems
 	// MinItems
 	// UniqueItems

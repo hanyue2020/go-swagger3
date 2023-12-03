@@ -32,7 +32,7 @@ func action(c *cli.Context) error {
 	args := LoadArgs(c)
 	parser, err := parserPkg.NewParser(
 		args.modulePath,
-		args.mainFilePath,
+		args.basicInfoPath,
 		args.handlerPath,
 		args.debug,
 		args.strict,

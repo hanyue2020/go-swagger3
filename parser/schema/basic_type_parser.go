@@ -13,22 +13,28 @@ func (p *parser) parseBasicTypeSchemaObject(pkgPath string, pkgName string, type
 	var schemaObject SchemaObject
 	var err error
 	// handler basic and some specific typeName
+	switch typeName {
+	case "time.Time":
+		return p.parseTimeType(schemaObject)
+	case "decimal.Decimal":
+		return p.parseDecimalType(schemaObject)
+	case "any", "interface{}":
+		return p.parseInterfaceType()
+	case "struct{}":
+		return p.parseAnonymousStructType(pkgPath, pkgName, typeName, astExpr)
+	}
+
 	if strings.HasPrefix(typeName, "[]") {
 		arrayType := astExpr.(*ast.ArrayType)
 		return p.parseArrayType(pkgPath, pkgName, typeName, schemaObject, err, arrayType.Elt)
-	} else if strings.HasPrefix(typeName, "map[]") {
+	}
+
+	if strings.HasPrefix(typeName, "map[]") {
 		mapType := astExpr.(*ast.MapType)
 		return p.parseMapType(pkgPath, pkgName, typeName, schemaObject, mapType.Value)
-	} else if typeName == "time.Time" {
-		return p.parseTimeType(schemaObject)
-	} else if typeName == "decimal.Decimal" {
-		schemaObject.Type = "string"
-		return &schemaObject, nil, true
-	} else if strings.HasPrefix(typeName, "struct{}") {
-		return p.parseAnonymousStructType(pkgPath, pkgName, typeName, astExpr)
-	} else if strings.HasPrefix(typeName, "interface{}") || typeName == "any" {
-		return p.parseInterfaceType()
-	} else if utils.IsGoTypeOASType(typeName) {
+	}
+
+	if utils.IsGoTypeOASType(typeName) {
 		return p.parseBasicGoType(schemaObject, typeName)
 	}
 	return nil, nil, false
@@ -56,6 +62,13 @@ func (p *parser) parseAnonymousStructType(pkgPath, pkgName, typeName string, ast
 func (p *parser) parseTimeType(schemaObject SchemaObject) (*SchemaObject, error, bool) {
 	schemaObject.Type = "string"
 	schemaObject.Format = "date-time"
+	return &schemaObject, nil, true
+}
+
+func (p *parser) parseDecimalType(schemaObject SchemaObject) (*SchemaObject, error, bool) {
+	schemaObject.Type = "string"
+	schemaObject.Format = "regex"
+	schemaObject.Pattern = "[1-9][0-9]{1,2}\\.[0-9][1-9]{1,2}"
 	return &schemaObject, nil, true
 }
 

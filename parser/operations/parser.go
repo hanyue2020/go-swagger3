@@ -7,6 +7,7 @@ import (
 	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
 	"github.com/hanyue2020/go-swagger3/parser/model"
 	"github.com/hanyue2020/go-swagger3/parser/schema"
+	"github.com/spf13/cast"
 )
 
 type Parser interface {
@@ -27,7 +28,6 @@ func NewParser(utils model.Utils, api *OpenAPIObject, schemaParser schema.Parser
 		Parser:  schemaParser,
 	}
 }
-
 func (p *parser) Parse(pkgPath, pkgName string, astComments []*ast.Comment) error {
 	operation := &OperationObject{Responses: map[string]*ResponseObject{}}
 	if !strings.HasPrefix(pkgPath, p.ModulePath) || (p.HandlerPath != "" && !strings.HasPrefix(pkgPath, p.HandlerPath)) {
@@ -49,7 +49,11 @@ func (p *parser) Parse(pkgPath, pkgName string, astComments []*ast.Comment) erro
 func (p *parser) parseOperationFromComment(pkgPath string, pkgName string, comment string, operation *OperationObject) error {
 	attribute := strings.Fields(comment)[0]
 	switch strings.ToLower(attribute) {
-	case "@title":
+	case "@operationId":
+		operation.OperationId = strings.TrimSpace(comment[len(attribute):])
+	case "@deprecated":
+		operation.Deprecated = cast.ToBool(strings.TrimSpace(comment[len(attribute):]))
+	case "@title", "@summary":
 		operation.Summary = strings.TrimSpace(comment[len(attribute):])
 	case "@description", "@desc":
 		if operation.Description == "" {

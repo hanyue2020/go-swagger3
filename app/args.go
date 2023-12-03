@@ -9,25 +9,25 @@ import (
 type args struct {
 	flags []cli.Flag
 
-	modulePath   string
-	mainFilePath string
-	handlerPath  string
-	output       string
-	debug        bool
-	strict       bool
-	generateYaml bool
+	modulePath    string
+	basicInfoPath string
+	handlerPath   string
+	output        string
+	debug         bool
+	strict        bool
+	generateYaml  bool
 }
 
 func LoadArgs(c *cli.Context) *args {
 	appArgs := args{
-		flags:        flags,
-		modulePath:   c.GlobalString("module-path"),
-		mainFilePath: c.GlobalString("main-file-path"),
-		handlerPath:  c.GlobalString("handler-path"),
-		output:       c.GlobalString("output"),
-		debug:        c.GlobalBool("debug"),
-		strict:       c.GlobalBool("strict"),
-		generateYaml: c.GlobalBool("generate-yaml"),
+		flags:         flags,
+		modulePath:    c.GlobalString("module-path"),
+		basicInfoPath: c.GlobalString("basic-info-path"),
+		handlerPath:   c.GlobalString("handler-path"),
+		output:        c.GlobalString("output"),
+		debug:         c.GlobalBool("debug"),
+		strict:        c.GlobalBool("strict"),
+		generateYaml:  c.GlobalBool("generate-yaml"),
 	}
 	if appArgs.generateYaml && strings.HasSuffix(appArgs.output, ".json") {
 		appArgs.output = strings.TrimSuffix(appArgs.output, ".json") + ".yaml"
@@ -43,9 +43,9 @@ var flags = []cli.Flag{
 		Usage: "go-swagger3 will search @comment under the module",
 	},
 	cli.StringFlag{
-		Name:  "main-file-path",
+		Name:  "basic-info-path",
 		Value: "",
-		Usage: "go-swagger3 will start to search @comment from this main file",
+		Usage: "go-swagger3 will start to search @comment from this path file,default main.go",
 	},
 	cli.StringFlag{
 		Name:  "handler-path",

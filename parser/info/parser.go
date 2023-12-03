@@ -31,7 +31,7 @@ func NewParser(utils model.Utils, api *OpenAPIObject) Parser {
 // Parse parse basic info
 func (p *parser) Parse() error {
 	log.Info("Parsing Info ...")
-	fileTree, err := goparser.ParseFile(token.NewFileSet(), p.MainFilePath, nil, goparser.ParseComments)
+	fileTree, err := goparser.ParseFile(token.NewFileSet(), p.BasicInfoPath, nil, goparser.ParseComments)
 	if err != nil {
 		return fmt.Errorf("can not parse general API information: %v", err)
 	}
@@ -72,6 +72,7 @@ func (p *parser) parseComment(comment string, oauthScopes map[string]map[string]
 	p.Debug(attribute, value)
 	p.parseOpenApiInfo(attribute, value)
 	p.parseServerUrls(attribute, value)
+	p.parseTags(attribute, value)
 	p.parseSecurity(attribute, value)
 	p.parseSecurityScheme(attribute, value)
 	p.parseSecurityScope(attribute, value, oauthScopes)
@@ -93,6 +94,34 @@ func (p *parser) parseServerUrls(attribute string, value string) {
 	if attribute == "@server" {
 		p.parseServer(value)
 	}
+}
+func (p *parser) parseTags(attribute string, value string) {
+	if attribute != "@tags" {
+		return
+	}
+	if p.OpenAPI.Tags == nil {
+		p.OpenAPI.Tags = []*Tags{}
+	}
+	datas := strings.Split(value, ",")
+
+	tag := &Tags{}
+	dataSize := len(datas)
+	switch dataSize {
+	case 1:
+		tag.Name = datas[0]
+	case 2:
+		tag.Name = datas[0]
+		tag.Description = datas[1]
+	case 3:
+		tag.Name = datas[0]
+		tag.Description = datas[1]
+		tag.ExternalDocs = &ExternalDocs{Description: datas[2]}
+	default:
+		tag.Name = datas[0]
+		tag.Description = datas[1]
+		tag.ExternalDocs = &ExternalDocs{Description: datas[2], Url: datas[3]}
+	}
+	p.OpenAPI.Tags = append(p.OpenAPI.Tags, tag)
 }
 
 func (p *parser) parseOpenApiInfo(attribute string, value string) {
