@@ -49,6 +49,7 @@ var BasicGoTypes = map[string]bool{
 
 var GoTypesOASTypes = map[string]string{
 	"bool":    "boolean",
+	"byte":    "integer",
 	"uint":    "integer",
 	"uint8":   "integer",
 	"uint16":  "integer",
