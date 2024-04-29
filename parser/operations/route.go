@@ -24,24 +24,26 @@ func (p *parser) parseRouteComment(operation *oas.OperationObject, comment strin
 		p.OpenAPI.Paths[matches[1]] = &oas.PathItemObject{}
 	}
 
-	switch strings.ToUpper(matches[2]) {
-	case http.MethodGet:
-		p.OpenAPI.Paths[matches[1]].Get = operation
-	case http.MethodPost:
-		p.OpenAPI.Paths[matches[1]].Post = operation
-	case http.MethodPatch:
-		p.OpenAPI.Paths[matches[1]].Patch = operation
-	case http.MethodPut:
-		p.OpenAPI.Paths[matches[1]].Put = operation
-	case http.MethodDelete:
-		p.OpenAPI.Paths[matches[1]].Delete = operation
-	case http.MethodOptions:
-		p.OpenAPI.Paths[matches[1]].Options = operation
-	case http.MethodHead:
-		p.OpenAPI.Paths[matches[1]].Head = operation
-	case http.MethodTrace:
-		p.OpenAPI.Paths[matches[1]].Trace = operation
+	methods := strings.Split(matches[2], "|")
+	for _, v := range methods {
+		switch strings.ToUpper(v) {
+		case http.MethodGet:
+			p.OpenAPI.Paths[matches[1]].Get = operation
+		case http.MethodPost:
+			p.OpenAPI.Paths[matches[1]].Post = operation
+		case http.MethodPatch:
+			p.OpenAPI.Paths[matches[1]].Patch = operation
+		case http.MethodPut:
+			p.OpenAPI.Paths[matches[1]].Put = operation
+		case http.MethodDelete:
+			p.OpenAPI.Paths[matches[1]].Delete = operation
+		case http.MethodOptions:
+			p.OpenAPI.Paths[matches[1]].Options = operation
+		case http.MethodHead:
+			p.OpenAPI.Paths[matches[1]].Head = operation
+		case http.MethodTrace:
+			p.OpenAPI.Paths[matches[1]].Trace = operation
+		}
 	}
-
 	return nil
 }

@@ -49,7 +49,7 @@ func (p *parser) parseInterfaceType() (*SchemaObject, error, bool) {
 	return &SchemaObject{Type: "object"}, nil, true
 }
 
-func (p *parser) parseAnonymousStructType(pkgPath, pkgName, typeName string, astExpr ast.Expr) (*SchemaObject, error, bool) {
+func (p *parser) parseAnonymousStructType(pkgPath, pkgName, _ string, astExpr ast.Expr) (*SchemaObject, error, bool) {
 	obj := &SchemaObject{Type: "object"}
 	switch astExpr.(type) {
 	case *ast.StructType:

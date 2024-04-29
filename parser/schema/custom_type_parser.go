@@ -74,16 +74,37 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 		}
 		pkgPath, pkgName = guessPkgPath, guessPkgName
 	}
-	switch typeSpec.Type.(type) {
+	switch astType := typeSpec.Type.(type) {
 	case *ast.Ident:
-		if astIdent := typeSpec.Type.(*ast.Ident); astIdent != nil {
-			schemaObject.Type = astIdent.Name
+		if astType != nil {
+			schemaObject.Type = astType.Name
+			if utils.IsGoTypeOASType(astType.Name) {
+				schemaObject.Type = utils.GoTypesOASTypes[astType.Name]
+			} else {
+				// 看下是否是多重 type
+				typeName := astType.Name
+				if len(strings.Split(typeName, ".")) > 1 {
+					break
+				}
+				for {
+					for k, v := range p.PkgAndSpecs.KnownIDSchema {
+						if strings.Contains(k, typeName) {
+							typeName = v.Type
+							break
+						}
+					}
+					if utils.IsGoTypeOASType(typeName) {
+						schemaObject.Type = utils.GoTypesOASTypes[typeName]
+						break
+					}
+				}
+			}
 		}
 	case *ast.StructType:
-		if astStructType := typeSpec.Type.(*ast.StructType); astStructType != nil {
+		{
 			schemaObject.Type = "object"
-			if astStructType.Fields != nil {
-				p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, &schemaObject, astStructType.Fields.List)
+			if astType.Fields != nil {
+				p.parseSchemaPropertiesFromStructFields(pkgPath, pkgName, &schemaObject, astType.Fields.List)
 			}
 			typeNameParts := strings.Split(typeName, ".")
 			if len(typeNameParts) > 1 {
@@ -97,10 +118,10 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 			}
 		}
 	case *ast.ArrayType:
-		if astArrayType := typeSpec.Type.(*ast.ArrayType); astArrayType != nil {
+		{
 			schemaObject.Type = "array"
 			schemaObject.Items = &SchemaObject{}
-			typeAsString := p.getTypeAsString(astArrayType.Elt)
+			typeAsString := p.getTypeAsString(astType.Elt)
 			typeAsString = strings.TrimLeft(typeAsString, "*")
 			if !utils.IsBasicGoType(typeAsString) {
 				schemaItemsSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString, astExpr)
@@ -114,12 +135,12 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 			}
 		}
 	case *ast.MapType:
-		if astMapType := typeSpec.Type.(*ast.MapType); astMapType != nil {
+		{
 			schemaObject.Type = "object"
 			schemaObject.Properties = orderedmap.New()
 			propertySchema := &SchemaObject{}
 			schemaObject.Properties.Set("key", propertySchema)
-			typeAsString := p.getTypeAsString(astMapType.Value)
+			typeAsString := p.getTypeAsString(astType.Value)
 			typeAsString = strings.TrimLeft(typeAsString, "*")
 			if !utils.IsBasicGoType(typeAsString) {
 				schemaItemsSchemeaObjectID, err := p.RegisterType(pkgPath, pkgName, typeAsString, astExpr)
@@ -132,6 +153,8 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 				propertySchema.Type = utils.GoTypesOASTypes[typeAsString]
 			}
 		}
+	default:
+		fmt.Printf("%+v", astType)
 	}
 	return &schemaObject, nil
 }
@@ -147,11 +170,10 @@ func (p *parser) getTypeSpec(pkgName, typeName string) (*ast.TypeSpec, bool) {
 	}
 	return astTypeSpec, true
 }
-func (p *parser) parseStructField(pkgPath, pkgName string, structSchema *SchemaObject, astExpr ast.Expr) (fieldSchema *SchemaObject, err error) {
+func (p *parser) parseStructField(pkgPath, pkgName string, _ *SchemaObject, astExpr ast.Expr) (fieldSchema *SchemaObject, err error) {
 	fieldSchema = &SchemaObject{}
 	typeAsString := p.getTypeAsString(astExpr)
 	typeAsString = strings.TrimLeft(typeAsString, "*")
-
 	switch typeAsString {
 	case "time.Time", "decimal.Decimal", "struct{}", "interface{}":
 		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString, astExpr)
@@ -181,10 +203,10 @@ func (p *parser) parseStructField(pkgPath, pkgName string, structSchema *SchemaO
 			schema, ok := p.KnownIDSchema[fieldSchemaSchemeaObjectID]
 			if ok {
 				fieldSchema.Type = schema.Type
+				fieldSchema.Ref = utils.AddSchemaRefLinkPrefix(fieldSchemaSchemeaObjectID)
 				if schema.Items != nil {
 					fieldSchema.Items = schema.Items
 				}
-				fieldSchema.Ref = utils.AddSchemaRefLinkPrefix(fieldSchemaSchemeaObjectID)
 			}
 		}
 	} else if utils.IsGoTypeOASType(typeAsString) {
