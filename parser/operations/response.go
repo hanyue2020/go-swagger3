@@ -44,8 +44,8 @@ func (p *parser) parseResponseComment(pkgPath, pkgName string, operation *oas.Op
 		err = p.complexResponseObject(pkgPath, pkgName, matches[3], responseObject)
 	case "{string}", "{integer}", "{boolean}", "string", "integer", "boolean":
 		err = p.simpleResponseObject(matches[2], responseObject)
-	case "":
-
+	case "{file}", "file":
+		err = p.fileResponseObject(responseObject, strings.Trim(matches[4], "\""))
 	default:
 		return fmt.Errorf("parseResponseComment: invalid jsonType %s", matches[2])
 	}
@@ -131,5 +131,10 @@ func (p *parser) simpleResponseObject(jsonType string, responseObject *oas.Respo
 	}
 
 	responseObject.Content[oas.ContentTypeJson] = &oas.MediaTypeObject{Schema: oas.SchemaObject{Type: formattedType}}
+	return nil
+}
+
+func (p *parser) fileResponseObject(responseObject *oas.ResponseObject, desc string) error {
+	responseObject.Content[oas.ContentTypeFile] = &oas.MediaTypeObject{Schema: oas.SchemaObject{Type: "string", Description: desc, Example: desc}}
 	return nil
 }

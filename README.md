@@ -238,15 +238,15 @@ type Request struct {
 
 #### Response
 ``` json
-@Success  {stauts}  {jsonType}  {goType}       {description}
+@Success  {stauts}  {in}  {goType}       {description}
 @Success  200       object      UsersResponse  "UsersResponse JSON"
 
-@Failure  {stauts}  {jsonType}  {goType}       {description}
+@Failure  {stauts}  {in}  {goType}       {description}
 @Failure  400       object      ErrorResponse  "ErrorResponse JSON"
 ```
 - {status}: The HTTP status code.
-- {jsonType}: The value can be `object` or `array`.
-- {goType}: The type in go code.
+- {in}: The parameter is in `object` `array` `file`.
+- {goType}: The type in go code. This will be ignored when {in} is `file`.
 - {description}: The description of the response. Must be quoted.
 
 #### Resource & Tag
@@ -264,7 +264,7 @@ type Request struct {
 
 ``` json
 @Route {path}    {method}
-@Route /api/user [post]
+@Route /api/user [post,get]
 ```
 
 - {path}: The URL path.

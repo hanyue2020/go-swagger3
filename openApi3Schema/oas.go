@@ -9,6 +9,7 @@ const (
 
 	ContentTypeText = "text/plain"
 	ContentTypeJson = "application/json"
+	ContentTypeFile = "application/octet-stream"
 	ContentTypeForm = "multipart/form-data"
 )
 
