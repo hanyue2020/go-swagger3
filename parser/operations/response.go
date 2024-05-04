@@ -47,7 +47,7 @@ func (p *parser) parseResponseComment(pkgPath, pkgName string, operation *oas.Op
 	case "{file}", "file":
 		err = p.fileResponseObject(responseObject, strings.Trim(matches[4], "\""))
 	default:
-		return fmt.Errorf("parseResponseComment: invalid jsonType %s", matches[2])
+		return fmt.Errorf("parseResponseComment: invalid jsonType %s %v", matches[2], comment)
 	}
 
 	if err != nil {
