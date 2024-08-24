@@ -78,10 +78,12 @@ func (p *parser) RegisterType(pkgPath, pkgName, typeName string, astExpr ast.Exp
 
 func (p *parser) ParseSchemaObject(pkgPath, pkgName, typeName string, astExpr ast.Expr) (*SchemaObject, error) {
 	schemaObject, err, isBasicType := p.parseBasicTypeSchemaObject(pkgPath, pkgName, typeName, astExpr)
+	if err != nil {
+		return nil, err
+	}
 	if isBasicType {
 		return schemaObject, err
 	}
-
 	return p.parseCustomTypeSchemaObject(pkgPath, pkgName, typeName, astExpr)
 }
 

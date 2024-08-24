@@ -216,7 +216,7 @@ func (p *parser) parseStructField(pkgPath, pkgName string, _ *SchemaObject, astE
 }
 
 func (p *parser) parseSchemaPropertiesFromStructFields(pkgPath, pkgName string, structSchema *SchemaObject, astFields []*ast.Field) {
-	if astFields == nil {
+	if astFields == nil || len(astFields) == 0 {
 		return
 	}
 	structSchema.Properties = orderedmap.New()
@@ -282,8 +282,12 @@ astFieldsLoop:
 			refSchema, ok := p.KnownIDSchema[fieldSchema.ID]
 			if ok {
 				structSchema.Required = append(structSchema.Required, refSchema.Required...)
+				if refSchema.Properties == nil {
+					continue
+				}
 				for _, propertyName := range refSchema.Properties.Keys() {
 					refPropertySchema, _ := refSchema.Properties.Get(propertyName)
+
 					_, disabled := structSchema.DisabledFieldNames[refPropertySchema.(*SchemaObject).FieldName]
 					if disabled {
 						continue
