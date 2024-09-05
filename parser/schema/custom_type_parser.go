@@ -15,7 +15,6 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 	var typeSpec *ast.TypeSpec
 	var exist bool
 	var schemaObject SchemaObject
-
 	// handler other type
 	typeNameParts := strings.Split(typeName, ".")
 	if len(typeNameParts) == 1 {
@@ -74,6 +73,9 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 		}
 		pkgPath, pkgName = guessPkgPath, guessPkgName
 	}
+	// if typeName == "entity.TrxInstantMod" {
+	// 	fmt.Println(typeName)
+	// }
 	switch astType := typeSpec.Type.(type) {
 	case *ast.Ident:
 		if astType != nil {
@@ -98,6 +100,12 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 						break
 					}
 				}
+			}
+			if typeSpec.Comment != nil {
+				schemaObject.Description = strings.TrimSpace(strings.Trim(typeSpec.Comment.List[0].Text, "//"))
+			}
+			if typeSpec.Doc != nil {
+				schemaObject.Description = strings.TrimSpace(strings.Trim(typeSpec.Doc.List[0].Text, "//"))
 			}
 		}
 	case *ast.StructType:
@@ -228,12 +236,11 @@ astFieldsLoop:
 		if len(astField.Names) == 0 {
 			continue
 		}
+		name := astField.Names[0].Name
 		fieldSchema, err := p.parseStructField(pkgPath, pkgName, structSchema, astField.Type)
 		if err != nil {
 			return
 		}
-
-		name := astField.Names[0].Name
 		fieldSchema.FieldName = name
 		continueLoop := false
 		_, disabled := structSchema.DisabledFieldNames[name]
@@ -250,8 +257,11 @@ astFieldsLoop:
 			if astField.Comment != nil {
 				fieldSchema.Description = strings.TrimSpace(strings.Trim(astField.Comment.List[0].Text, "//"))
 			}
-		}
-		if fieldSchema.Ref != "" {
+		} else if fieldSchema.Description == "" && fieldSchema.Ref != "" {
+			if astField.Comment != nil {
+				fieldSchema.Description = strings.TrimSpace(strings.Trim(astField.Comment.List[0].Text, "//"))
+			}
+		} else {
 			fieldSchema.Description = ""
 			fieldSchema.Type = ""
 		}
