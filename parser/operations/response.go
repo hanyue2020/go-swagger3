@@ -45,7 +45,7 @@ func (p *parser) parseResponseComment(pkgPath, pkgName string, operation *oas.Op
 	case "{string}", "{integer}", "{boolean}", "string", "integer", "boolean":
 		err = p.simpleResponseObject(matches[2], responseObject)
 	case "{file}", "file":
-		err = p.fileResponseObject(responseObject, strings.Trim(matches[4], "\""))
+		err = p.fileResponseObject(responseObject, matches[3], strings.Trim(matches[4], "\""))
 	default:
 		return fmt.Errorf("parseResponseComment: invalid jsonType %s %v", matches[2], comment)
 	}
@@ -134,7 +134,18 @@ func (p *parser) simpleResponseObject(jsonType string, responseObject *oas.Respo
 	return nil
 }
 
-func (p *parser) fileResponseObject(responseObject *oas.ResponseObject, desc string) error {
-	responseObject.Content[oas.ContentTypeFile] = &oas.MediaTypeObject{Schema: oas.SchemaObject{Type: "string", Description: desc, Example: desc}}
+func (p *parser) fileResponseObject(responseObject *oas.ResponseObject, fileType, desc string) error {
+	switch strings.ToLower(fileType) {
+	case "csv":
+		responseObject.Content[oas.ContentTypeCsv] = &oas.MediaTypeObject{Schema: oas.SchemaObject{Type: "string", Format: "binary", Description: desc, Example: desc}}
+	case "pdf":
+		responseObject.Content[oas.ContentTypePDF] = &oas.MediaTypeObject{Schema: oas.SchemaObject{Type: "string", Format: "binary", Description: desc, Example: desc}}
+	case "png":
+		responseObject.Content[oas.ContentTypePng] = &oas.MediaTypeObject{Schema: oas.SchemaObject{Type: "string", Format: "binary", Description: desc, Example: desc}}
+	case "jpeg":
+		responseObject.Content[oas.ContentTypeJpeg] = &oas.MediaTypeObject{Schema: oas.SchemaObject{Type: "string", Format: "binary", Description: desc, Example: desc}}
+	default:
+		responseObject.Content[oas.ContentTypeFile] = &oas.MediaTypeObject{Schema: oas.SchemaObject{Type: "string", Format: "binary", Description: desc, Example: desc}}
+	}
 	return nil
 }

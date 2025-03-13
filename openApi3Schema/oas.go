@@ -8,6 +8,11 @@ const (
 	OpenAPIVersion = "3.0.3"
 
 	ContentTypeText = "text/plain"
+	ContentTypeCsv  = "text/csv"
+	ContentTypePng  = "image/png"
+	ContentTypeJpeg = "image/jpeg"
+	ContentTypeXML  = "application/xml"
+	ContentTypePDF  = "application/pdf"
 	ContentTypeJson = "application/json"
 	ContentTypeFile = "application/octet-stream"
 	ContentTypeForm = "multipart/form-data"
