@@ -8,14 +8,78 @@ const (
 	OpenAPIVersion = "3.0.3"
 
 	ContentTypeText = "text/plain"
-	ContentTypeCsv  = "text/csv"
-	ContentTypePng  = "image/png"
-	ContentTypeJpeg = "image/jpeg"
 	ContentTypeXML  = "application/xml"
 	ContentTypePDF  = "application/pdf"
-	ContentTypeJson = "application/json"
 	ContentTypeFile = "application/octet-stream"
-	ContentTypeForm = "multipart/form-data"
+	// Text
+	ContentTypePlain = "text/plain"
+	ContentTypeHtml  = "text/html"
+	ContentTypeCss   = "text/css"
+	ContentTypeCsv   = "text/csv"
+	ContentTypeJs    = "text/javascript"
+	ContentTypeXml   = "text/xml"
+	ContentTypeMd    = "text/markdown"
+	// Image
+	ContentTypeJpeg = "image/jpeg"
+	ContentTypePng  = "image/png"
+	ContentTypeGif  = "image/gif"
+	ContentTypeSvg  = "image/svg+xml"
+	ContentTypeWebp = "image/webp"
+	ContentTypeBmp  = "image/bmp"
+	ContentTypeTiff = "image/tiff"
+
+	// Audio
+	ContentTypeMp3  = "audio/mpeg"
+	ContentTypeOgg  = "audio/ogg"
+	ContentTypeWav  = "audio/wav"
+	ContentTypeWebm = "audio/webm"
+	ContentTypeAac  = "audio/aac"
+	ContentTypeMidi = "audio/midi"
+
+	// Video
+	ContentTypeMp4   = "video/mp4"
+	ContentTypeOggV  = "video/ogg"
+	ContentTypeWebmV = "video/webm"
+	ContentTypeAvi   = "video/x-msvideo"
+	ContentTypeMov   = "video/quicktime"
+	ContentTypeMkv   = "video/x-matroska"
+
+	// Application
+	ContentTypeJson  = "application/json"
+	ContentTypeXmlA  = "application/xml"
+	ContentTypePdf   = "application/pdf"
+	ContentTypeZip   = "application/zip"
+	ContentTypeGzip  = "application/gzip"
+	ContentTypeTar   = "application/x-tar"
+	ContentTypeOctet = "application/octet-stream"
+	ContentTypeForm  = "application/x-www-form-urlencoded"
+
+	// Office Documents
+	ContentTypeXls  = "application/vnd.ms-excel"
+	ContentTypeXlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+	ContentTypeDoc  = "application/msword"
+	ContentTypeDocx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	ContentTypePpt  = "application/vnd.ms-powerpoint"
+	ContentTypePptx = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+	// Font
+	ContentTypeTtf   = "font/ttf"
+	ContentTypeOtf   = "font/otf"
+	ContentTypeWoff  = "font/woff"
+	ContentTypeWoff2 = "font/woff2"
+
+	// Multipart
+	ContentTypeFormData = "multipart/form-data"
+
+	// Message
+	ContentTypeRfc822 = "message/rfc822"
+	ContentTypeHttp   = "message/http"
+
+	// Other
+	ContentTypeRtf    = "application/rtf"
+	ContentTypeSh     = "application/x-sh"
+	ContentTypePython = "application/x-python-code"
+	ContentTypeJar    = "application/x-java-archive"
 )
 
 type ExternalDocs struct {

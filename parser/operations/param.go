@@ -144,20 +144,20 @@ func appendRequestBody(operation *oas.OperationObject, parameterObject oas.Param
 	if operation.RequestBody == nil {
 		operation.RequestBody = &oas.RequestBodyObject{
 			Content: map[string]*oas.MediaTypeObject{
-				oas.ContentTypeForm: {Schema: oas.SchemaObject{Type: "object", Properties: orderedmap.New()}},
+				oas.ContentTypeFormData: {Schema: oas.SchemaObject{Type: "object", Properties: orderedmap.New()}},
 			},
 			Required: parameterObject.Required,
 		}
 	}
 	if parameterObject.In == "file" {
-		operation.RequestBody.Content[oas.ContentTypeForm].Schema.Properties.Set(parameterObject.Name, &oas.SchemaObject{
+		operation.RequestBody.Content[oas.ContentTypeFormData].Schema.Properties.Set(parameterObject.Name, &oas.SchemaObject{
 			Type:        "string",
 			Format:      "binary",
 			Description: parameterObject.Description,
 		})
 	}
 	if utils.IsGoTypeOASType(goType) {
-		operation.RequestBody.Content[oas.ContentTypeForm].Schema.Properties.Set(parameterObject.Name, &oas.SchemaObject{
+		operation.RequestBody.Content[oas.ContentTypeFormData].Schema.Properties.Set(parameterObject.Name, &oas.SchemaObject{
 			Type:        utils.GoTypesOASTypes[goType],
 			Format:      utils.GoTypesOASFormats[goType],
 			Description: parameterObject.Description,
