@@ -261,9 +261,6 @@ astFieldsLoop:
 			if astField.Comment != nil {
 				fieldSchema.Description = strings.TrimSpace(strings.Trim(astField.Comment.List[0].Text, "//"))
 			}
-		} else {
-			fieldSchema.Description = ""
-			fieldSchema.Type = ""
 		}
 		structSchema.Properties.Set(name, fieldSchema)
 	}

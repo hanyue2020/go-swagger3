@@ -235,10 +235,13 @@ func (p *parser) parseFieldTagAndDoc(astField *ast.Field, structSchema, fieldSch
 	}
 	// 解析备注
 	desc := doc["@desc"]
-	if desc == "" && astField.Comment != nil {
+
+	if desc != "" {
+		fieldSchema.Description = desc
+	} else if astField.Comment != nil {
 		desc = strings.Split(astField.Comment.Text(), "\n")[0]
+		fieldSchema.Description = desc
 	}
-	fieldSchema.Description = desc
 	// 解析ref
 	if ref := doc["@ref"]; ref != "" {
 		fieldSchema.Ref = utils.AddSchemaRefLinkPrefix(ref)
