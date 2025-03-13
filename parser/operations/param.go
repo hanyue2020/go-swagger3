@@ -10,6 +10,26 @@ import (
 	"github.com/iancoleman/orderedmap"
 )
 
+func (p *parser) parseResponseDesc(operation *oas.OperationObject, comment string) error {
+	// {status}  {description}
+	// 201    "User Model"
+	// for cases of empty return payload
+	// {status} {description}
+	// 204 "User Model"
+	// 200  "..."
+	re := regexp.MustCompile(`(?P<status>[\d]+)[\s]*[^"]*(?P<description>.*)?`)
+	matches := re.FindStringSubmatch(comment)
+	if len(matches) <= 2 {
+		return fmt.Errorf("parseResponseDesc can not parse response comment \"%s\"", comment)
+	}
+	if operation.Responses[matches[1]].Description == "" {
+		operation.Responses[matches[1]].Description = matches[2]
+	} else {
+		operation.Responses[matches[1]].Description += "\n" + strings.Trim(matches[2], "\"")
+	}
+	return nil
+}
+
 func (p *parser) parseParamComment(pkgPath, pkgName string, operation *oas.OperationObject, comment string) error {
 	// {name}  {in}  {goType}  {required}  {description}
 	// user    body  User      true        "Info of a user."

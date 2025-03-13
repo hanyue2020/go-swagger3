@@ -49,7 +49,7 @@ func (p *parser) Parse(pkgPath, pkgName string, astComments []*ast.Comment) erro
 func (p *parser) parseOperationFromComment(pkgPath string, pkgName string, comment string, operation *OperationObject) error {
 	attribute := strings.Fields(comment)[0]
 	switch strings.ToLower(attribute) {
-	case "@operationId":
+	case "@operationid":
 		operation.OperationId = strings.TrimSpace(comment[len(attribute):])
 	case "@deprecated":
 		operation.Deprecated = cast.ToBool(strings.TrimSpace(comment[len(attribute):]))
@@ -65,8 +65,10 @@ func (p *parser) parseOperationFromComment(pkgPath string, pkgName string, comme
 		return p.parseParamComment(pkgPath, pkgName, operation, strings.TrimSpace(comment[len(attribute):]))
 	case "@header":
 		return p.parseHeaders(pkgPath, pkgName, operation, strings.TrimSpace(comment[len(attribute):]))
-	case "@success", "@failure":
+	case "@success", "@failure", "@response":
 		return p.parseResponseComment(pkgPath, pkgName, operation, strings.TrimSpace(comment[len(attribute):]))
+	case "@response.desc":
+		return p.parseResponseDesc(operation, strings.TrimSpace(comment[len(attribute):]))
 	case "@resource", "@tag":
 		p.parseResourceAndTag(comment, attribute, operation)
 	case "@route", "@router":
