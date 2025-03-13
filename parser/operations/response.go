@@ -136,20 +136,10 @@ func (p *parser) simpleResponseObject(jsonType string, responseObject *oas.Respo
 
 func (p *parser) fileResponseObject(responseObject *oas.ResponseObject, fileType, desc string) error {
 	obj := &oas.MediaTypeObject{Schema: oas.SchemaObject{Type: "string", Format: "binary", Description: desc, Example: desc}}
-	switch strings.ToLower(fileType) {
-	case "csv":
-		responseObject.Content[oas.ContentTypeCsv] = obj
-	case "pdf":
-		responseObject.Content[oas.ContentTypePDF] = obj
-	case "xlsx", "xls":
-		responseObject.Content[oas.ContentTypeXlsx] = obj
-	case "png":
-		responseObject.Content[oas.ContentTypePng] = obj
-	case "doc", "docx":
-		responseObject.Content[oas.ContentTypeDocx] = obj
-	case "jpeg":
-		responseObject.Content[oas.ContentTypeJpeg] = obj
-	default:
+	key, ok := oas.ContentTypeMap[strings.ToLower(fileType)]
+	if ok {
+		responseObject.Content[key] = obj
+	} else {
 		responseObject.Content[oas.ContentTypeFile] = obj
 	}
 	return nil
