@@ -141,6 +141,7 @@ func (p *parser) parseFileName(jsonTag, name string, structSchema, fieldSchema *
 func (p *parser) parseFieldTagAndDoc(astField *ast.Field, structSchema, fieldSchema *SchemaObject) (astFieldsLoop bool, name string) {
 	isRequired := false
 	name = astField.Names[0].Name
+
 	if astField.Doc == nil {
 		if astField.Tag == nil {
 			return

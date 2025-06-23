@@ -47,7 +47,6 @@ func (p *parser) Init() (*parser, error) {
 	if err := p.verifyAndSetPaths(); err != nil {
 		return nil, err
 	}
-
 	p.schemaParser = schema.NewParser(p.Utils, p.OpenAPI)
 	p.apiParser = apis.NewParser(p.Utils, p.OpenAPI, p.schemaParser)
 	p.infoParser = info.NewParser(p.Utils, p.OpenAPI)

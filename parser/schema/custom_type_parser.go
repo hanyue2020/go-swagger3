@@ -73,9 +73,7 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 		}
 		pkgPath, pkgName = guessPkgPath, guessPkgName
 	}
-	// if typeName == "entity.TrxInstantMod" {
-	// 	fmt.Println(typeName)
-	// }
+
 	switch astType := typeSpec.Type.(type) {
 	case *ast.Ident:
 		if astType != nil {
@@ -224,7 +222,7 @@ func (p *parser) parseStructField(pkgPath, pkgName string, _ *SchemaObject, astE
 }
 
 func (p *parser) parseSchemaPropertiesFromStructFields(pkgPath, pkgName string, structSchema *SchemaObject, astFields []*ast.Field) {
-	if astFields == nil || len(astFields) == 0 {
+	if len(astFields) == 0 {
 		return
 	}
 	structSchema.Properties = orderedmap.New()
