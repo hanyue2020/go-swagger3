@@ -1,6 +1,6 @@
 module github.com/hanyue2020/go-swagger3
 
-go 1.23.0
+go 1.24.0
 
 toolchain go1.24.1
 
@@ -10,7 +10,7 @@ require (
 	github.com/spf13/cast v1.8.0
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli v1.22.16
-	golang.org/x/mod v0.24.0
+	golang.org/x/mod v0.30.0
 	sigs.k8s.io/yaml v1.4.0
 )
 
