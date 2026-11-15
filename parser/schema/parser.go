@@ -6,7 +6,6 @@ import (
 	goParser "go/parser"
 	"go/token"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -53,6 +52,16 @@ func (p *parser) GetPkgAst(pkgPath string) (map[string]*ast.Package, error) {
 func (p *parser) RegisterType(pkgPath, pkgName, typeName string, astExpr ast.Expr) (string, error) {
 	var registerTypeName string
 
+	if strings.Contains(typeName, "[") {
+		genericPkgPath, genericPkgName, genericTypeName, handled, err := p.instantiateGenericType(pkgName, typeName)
+		if err != nil {
+			return "", err
+		}
+		if handled {
+			pkgPath, pkgName, typeName = genericPkgPath, genericPkgName, genericTypeName
+		}
+	}
+
 	if utils.IsBasicGoType(typeName) || utils.IsInterfaceType(typeName) {
 		registerTypeName = typeName
 	} else if schemaObject, ok := p.KnownIDSchema[utils.GenSchemaObjectID(pkgName, typeName)]; ok {
@@ -87,98 +96,33 @@ func (p *parser) ParseSchemaObject(pkgPath, pkgName, typeName string, astExpr as
 	return p.parseCustomTypeSchemaObject(pkgPath, pkgName, typeName, astExpr)
 }
 
-func (p *parser) parseDocAttributeAndValue(comment string) (string, string, bool) {
-	attribute := strings.ToLower(strings.Split(comment, " ")[0])
-	if len(attribute) == 0 || attribute[0] != '@' {
-		return "", "", false
-	}
-	value := strings.TrimSpace(comment[len(attribute):])
-	if len(value) == 0 {
-		return "", "", false
-	}
-	return attribute, value, true
-}
-
-func (p *parser) parseFieldDoc(doc *ast.CommentGroup) map[string]string {
-	attrs := make(map[string]string)
-	if doc == nil {
-		return attrs
-	}
-	for _, comment := range strings.Split(doc.Text(), "\n") {
-		if comment == "" {
-			continue
-		}
-		key, value, ok := p.parseDocAttributeAndValue(strings.TrimSpace(comment))
-		if !ok {
-			continue
-		}
-		if key == "@desc" {
-			if _, ok := attrs[key]; ok {
-				attrs[key] = attrs[key] + "\n" + value
-				continue
-			}
-		}
-		attrs[key] = value
-	}
-	return attrs
-}
-func (p *parser) parseFileName(jsonTag, name string, structSchema, fieldSchema *SchemaObject) (filedName string, isRequired, astFieldsLoop bool) {
-	tagValues := strings.Split(jsonTag, ",")
-	for _, v := range tagValues {
-		if v == "-" {
-			structSchema.DisabledFieldNames[name] = struct{}{}
-			fieldSchema.Deprecated = true
-			astFieldsLoop = true
-			return
-		} else if v == "required" {
-			isRequired = true
-		} else if v != "" && v != "required" && v != "omitempty" {
-			filedName = v
-		}
-	}
-	return
-}
 func (p *parser) parseFieldTagAndDoc(astField *ast.Field, structSchema, fieldSchema *SchemaObject) (astFieldsLoop bool, name string) {
-	isRequired := false
-	name = astField.Names[0].Name
-
-	if astField.Doc == nil {
-		if astField.Tag == nil {
-			return
+	options := parseFieldOptions(astField)
+	name = options.name
+	if options.disabled {
+		if structSchema.DisabledFieldNames == nil {
+			structSchema.DisabledFieldNames = make(map[string]struct{})
 		}
-		astFieldTag := reflect.StructTag(strings.Trim(astField.Tag.Value, "`"))
-		name, isRequired, astFieldsLoop = p.parseFileName(astFieldTag.Get("json"), name, structSchema, fieldSchema)
-		if isRequired {
+		structSchema.DisabledFieldNames[options.disabledName] = struct{}{}
+		fieldSchema.Deprecated = true
+		return true, name
+	}
+	if options.skip {
+		return true, name
+	}
+	if astField.Doc == nil {
+		if options.required {
 			structSchema.Required = append(structSchema.Required, name)
 		}
-		if astFieldsLoop {
-			return
+		if astField.Comment != nil {
+			fieldSchema.Description = combineFieldDescriptions(
+				strings.TrimSpace(astField.Comment.Text()),
+				fieldSchema.Description,
+			)
 		}
-		return
+		return false, name
 	}
-
-	doc := p.parseFieldDoc(astField.Doc)
-
-	if goSwagger3 := doc["@go-swagger3"]; goSwagger3 != "" {
-		name, isRequired, astFieldsLoop = p.parseFileName(goSwagger3, name, structSchema, fieldSchema)
-		if astFieldsLoop {
-			return
-		}
-	}
-
-	if skip := doc["@skip"]; skip == "true" {
-		astFieldsLoop = true
-		return
-	}
-
-	if tag := doc["@json"]; tag == "" && astField.Tag != nil {
-		astFieldTag := reflect.StructTag(strings.Trim(astField.Tag.Value, "`"))
-		tag = astFieldTag.Get("json")
-		name, isRequired, astFieldsLoop = p.parseFileName(tag, name, structSchema, fieldSchema)
-		if astFieldsLoop {
-			return
-		}
-	}
+	doc := options.attributes
 	// 解析example
 	if example := doc["@example"]; example != "" {
 		switch fieldSchema.Type {
@@ -231,17 +175,16 @@ func (p *parser) parseFieldTagAndDoc(astField *ast.Field, structSchema, fieldSch
 		}
 	}
 
-	if data, ok := doc["@required"]; ok || isRequired || cast.ToBool(data) {
+	if data, ok := doc["@required"]; ok || options.required || cast.ToBool(data) {
 		structSchema.Required = append(structSchema.Required, name)
 	}
 	// 解析备注
 	desc := doc["@desc"]
-
-	if desc != "" {
-		fieldSchema.Description = desc
-	} else if astField.Comment != nil {
+	if desc == "" && astField.Comment != nil {
 		desc = strings.Split(astField.Comment.Text(), "\n")[0]
-		fieldSchema.Description = desc
+	}
+	if desc != "" {
+		fieldSchema.Description = combineFieldDescriptions(desc, fieldSchema.Description)
 	}
 	// 解析ref
 	if ref := doc["@ref"]; ref != "" {
@@ -349,4 +292,14 @@ func (p *parser) parseFieldTagAndDoc(astField *ast.Field, structSchema, fieldSch
 		}
 	}
 	return
+}
+
+func combineFieldDescriptions(fieldDescription, typeDescription string) string {
+	if fieldDescription == "" {
+		return typeDescription
+	}
+	if typeDescription == "" || typeDescription == fieldDescription {
+		return fieldDescription
+	}
+	return fieldDescription + "\n" + typeDescription
 }

@@ -105,6 +105,13 @@ func (p *parser) parseCustomTypeSchemaObject(pkgPath string, pkgName string, typ
 			if typeSpec.Doc != nil {
 				schemaObject.Description = strings.TrimSpace(strings.Trim(typeSpec.Doc.List[0].Text, "//"))
 			}
+			enumDescription, err := p.enumValueDescriptions(pkgPath, typeSpec.Name.Name)
+			if err != nil {
+				return nil, err
+			}
+			if enumDescription != "" {
+				schemaObject.Description = enumDescription
+			}
 		}
 	case *ast.StructType:
 		{
@@ -194,6 +201,9 @@ func (p *parser) parseStructField(pkgPath, pkgName string, _ *SchemaObject, astE
 			p.Debug(err)
 			return
 		}
+		if fieldSchema.Items != nil {
+			fieldSchema.Description = fieldSchema.Items.Description
+		}
 	} else if strings.HasPrefix(typeAsString, "map[]") {
 		fieldSchema, err = p.ParseSchemaObject(pkgPath, pkgName, typeAsString, astExpr)
 		if err != nil {
@@ -210,6 +220,7 @@ func (p *parser) parseStructField(pkgPath, pkgName string, _ *SchemaObject, astE
 			if ok {
 				fieldSchema.Type = schema.Type
 				fieldSchema.Ref = utils.AddSchemaRefLinkPrefix(fieldSchemaSchemeaObjectID)
+				fieldSchema.Description = schema.Description
 				if schema.Items != nil {
 					fieldSchema.Items = schema.Items
 				}

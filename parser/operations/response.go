@@ -18,7 +18,7 @@ func (p *parser) parseResponseComment(pkgPath, pkgName string, operation *oas.Op
 	// 204 "User Model"
 	// for cases of simple types
 	// 200 {string} string "..."
-	re := regexp.MustCompile(`(?P<status>[\d]+)[\s]*(?P<jsonType>[\w\{\}]+)?[\s]+(?P<goType>[\w\-\.\/\[\]]+)?[^"]*(?P<description>.*)?`)
+	re := regexp.MustCompile(`(?P<status>[\d]+)[\s]*(?P<jsonType>[\w\{\}]+)?[\s]+(?P<goType>[\w\-\.\/\[\],]+)?[^"]*(?P<description>.*)?`)
 	matches := re.FindStringSubmatch(comment)
 	if len(matches) <= 2 {
 		return fmt.Errorf("parseResponseComment can not parse response comment \"%s\"", comment)
