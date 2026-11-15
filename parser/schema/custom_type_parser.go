@@ -271,6 +271,10 @@ astFieldsLoop:
 				fieldSchema.Description = strings.TrimSpace(strings.Trim(astField.Comment.List[0].Text, "//"))
 			}
 		}
+		if fieldSchema.Ref != "" && fieldSchema.Description != "" {
+			fieldSchema.AllOf = []SchemaObject{{Ref: fieldSchema.Ref}}
+			fieldSchema.Ref = ""
+		}
 		structSchema.Properties.Set(name, fieldSchema)
 	}
 	// embedded type

@@ -270,6 +270,7 @@ type SchemaObject struct {
 	Format             string                 `json:"format,omitempty"`
 	Required           []string               `json:"required,omitempty"`
 	Properties         *orderedmap.OrderedMap `json:"properties,omitempty"`
+	AllOf              []SchemaObject         `json:"allOf,omitempty"`
 	Description        string                 `json:"description,omitempty"`
 	Minimum            any                    `json:"minimum,omitempty"`
 	Maximum            any                    `json:"maximum,omitempty"`

@@ -84,6 +84,9 @@ type Filter struct {
 	fieldSchema, ok := fieldValue.(*oas.SchemaObject)
 	require.True(t, ok)
 	assert.Equal(t, "帐单类型\n1 充值\n2 上分", fieldSchema.Description)
+	assert.Empty(t, fieldSchema.Ref)
+	require.Len(t, fieldSchema.AllOf, 1)
+	assert.Equal(t, "#/components/schemas/example.types.MerchantBillType", fieldSchema.AllOf[0].Ref)
 
 	arrayValue, ok := filterSchema.Properties.Get("Types")
 	require.True(t, ok)
