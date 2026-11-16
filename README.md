@@ -1,354 +1,283 @@
-### Demo
-
-Click here for [Youtube Demo Link](https://www.youtube.com/watch?v=GLM9c5j8g7I)
-
-
 # go-swagger3
 
-Generate [OpenAPI Specification](https://swagger.io/specification) v3 file with comments in Go.
+`go-swagger3` scans Go source code and its documentation comments to generate an
+[OpenAPI 3.0.3](https://swagger.io/specification/) specification in JSON or
+YAML. It reads a Go module, API metadata, handler comments, and Go types; it
+does not need to run the service.
 
-### Table of content
+## Requirements
 
-- [go-swagger3](#go-swagger3)
-    - [Table of content](#table-of-content)
-  - [1. Install](#1-install)
-    - [2. Documentation Generation](#2-documentation-generation)
-      - [Using binary](#using-binary)
-      - [Using docker](#using-docker)
-  - [3. Usage](#3-usage)
-    - [Service Description](#service-description)
-    - [Handler Functions](#handler-functions)
-      - [Title And Description](#title-and-description)
-      - [Parameter](#parameter)
-      - [Header](#header)
-      - [Header Parameters](#header-parameters)
-      - [Response](#response)
-      - [Resource \& Tag](#resource--tag)
-      - [Route](#route)
-      - [Enums](#enums)
-        - [How to add reference of Enum on types](#how-to-add-reference-of-enum-on-types)
-    - [4. Security](#4-security)
-      - [Scopes](#scopes)
-    - [5. Limitations](#5-limitations)
-    - [6. References](#6-references)
+- Go 1.24 or later
+- A Go module (`go.mod`) for the service being documented
 
-## 1. Install
+## Install
 
-```
+```sh
 go install github.com/hanyue2020/go-swagger3@latest
 ```
 
+Make sure `$(go env GOPATH)/bin` is on your `PATH` if the `go-swagger3` command
+is not found.
 
-### 2. Documentation Generation
-#### Using binary
-Go to the folder where is main.go in
+## Generate a specification
 
-``` shell
-// go.mod and main file are in the same directory
-go-swagger3 --module-path . --output oas.json --schema-without-pkg --generate-yaml true
+Run the command from the service's module directory:
 
-// go.mod and main file are in the different directory
-go-swagger3 --module-path . --main-file-path ./cmd/xxx/main.go --output oas.json --schema-without-pkg --generate-yaml true
-
-// in case you get 'command not found: go-swagger3' error, please export add GOPATH/bin to PATH
-export PATH="$HOME/go/bin:$PATH"
-
-Notes -
-- Pass schema-without-pkg flag as true if you want to generate schemas without package names
-- Pass generate-yaml as trus if you want to generate yaml spec file instead of json
-
+```sh
+go-swagger3 --module-path . --output openapi.json
 ```
 
-#### Using docker
-``` shell
-// go.mod and main file are in the same directory
-docker run -t --rm -v $(pwd):/app -w /app hanyue2020/go-swagger3:latest --module-path . --output oas.json --schema-without-pkg --generate-yaml true
+The generator searches the module for a `main` package to read API-level
+metadata. If there are multiple possible service entry points, select the
+metadata file explicitly:
 
-// go.mod and main file are in the different directory
-docker run -t --rm -v $(pwd):/app -w /app hanyue2020/go-swagger3:latest --module-path . --main-file-path ./cmd/xxx/main.go --output oas.json --schema-without-pkg --generate-yaml true
-
-Notes -
-- Pass schema-without-pkg flag as true if you want to generate schemas without package names
-- Pass generate-yaml as trus if you want to generate yaml spec file instead of json
-
+```sh
+go-swagger3 \
+  --module-path . \
+  --main-file-path ./cmd/api/main.go \
+  --handler-path ./internal/handlers \
+  --output ./docs/openapi.json
 ```
 
+`--main-file-path` is an alias for `--basic-info-path`. If neither is supplied,
+the generator searches for a main file and reports an error when it cannot
+choose an unambiguous one.
 
+### Select a service by domain
 
+For repositories with a `domain/<name>` layout, `--domain` locates the module
+containing that domain and uses `domain/<name>` as the handler path and
+`domain/<name>/boot/default.go` as the metadata file:
 
-## 3. Usage
+```sh
+# Run from the go-swagger3 repository root.
+go run main.go --domain merchant --output xxx.yaml --generate-yaml
+```
 
-You can document your service by placing annotations inside your godoc at various places in your code.
+For this repository, the command finds `example/rent/go.mod` and scans
+`example/rent/domain/merchant` for handlers. The search starts in the current
+working directory and its descendants. A positional `.` is not a module-path
+argument; to select a module explicitly, use `--module-path`:
 
-### Service Description
+```sh
+go-swagger3 \
+  --module-path ./example/rent \
+  --domain merchant \
+  --output xxx.yaml \
+  --generate-yaml
+```
 
-The service description comments can be located in any of your .go files. They provide general information about the service you are documenting.
+Explicit `--handler-path`, `--basic-info-path`, or `--main-file-path` values
+take precedence over the paths inferred from `--domain`.
 
-``` go
+The `.yaml` extension alone does not select YAML output; include
+`--generate-yaml`.
+
+### Command-line options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--module-path` | Current directory | Root of the Go module to scan. |
+| `--domain` | — | Infer the module and default paths for `domain/<name>`. |
+| `--basic-info-path` | Auto-detected | Go file containing API metadata comments. |
+| `--main-file-path` | — | Alias for `--basic-info-path`. |
+| `--handler-path` | Entire module | Restrict endpoint comment scanning to this directory. |
+| `--output` | `oas.json` | Output file path. |
+| `--generate-yaml` | `false` | Write YAML instead of JSON. If the output ends in `.json`, its extension is changed to `.yaml`. |
+| `--debug` | `false` | Enable debug logging. |
+| `--strict` | `false` | Return errors encountered while parsing Go packages instead of skipping those packages. |
+
+`--schema-without-pkg` is still accepted by the CLI for compatibility, but is
+not currently connected to schema generation.
+
+## Add API documentation
+
+The generator reads `@` directives from Go comments. Directive names are
+case-insensitive. API-level metadata is read from the selected metadata file;
+operation directives are read from documented functions under the handler
+path.
+
+### API metadata
+
+At minimum, provide a title and version:
+
+```go
+package main
+
+// @Title Store API
 // @Version 1.0.0
-// @Title Backend API
-// @ContactName Parvez
-// @ContactEmail abce@email.com
-// @ContactURL http://someurl.oxox
-// @TermsOfServiceUrl http://someurl.oxox
+// @Description API for managing products and orders.
+// @Server https://api.example.com Production
+// @ContactName API Support
+// @ContactEmail support@example.com
 // @LicenseName MIT
-// @LicenseURL https://en.wikipedia.org/wiki/MIT_License
-// @Server http://www.fake.com Server-1
-// @Server http://www.fake2.com Server-2
-// @Security AuthorizationHeader read write
-// @SecurityScheme AuthorizationHeader http bearer Input your token
+// @LicenseURL https://opensource.org/licenses/MIT
 ```
 
-`项目的desc,从README.md中获取,以便能更好的获取markdown的格式输出`
-### Handler Functions
+Supported metadata directives include:
 
-By adding comments to your handler func godoc, you can document individual actions as well as their input and output.
+| Directive | Meaning |
+| --- | --- |
+| `@Title` | Required API title. |
+| `@Version` | Required API version. |
+| `@Description` / `@Desc` | API description. Repeated lines are joined. |
+| `@Info.TermsOfServiceUrl` | Terms of service URL. |
+| `@ContactName`, `@ContactEmail` | Contact information. |
+| `@LicenseName`, `@LicenseURL` | License information. |
+| `@Server <url> [description]` | Add a server. Defaults to `/` when omitted. |
+| `@Tags <name>[,<description>[,<external-doc-description>,<external-doc-url>]]` | Add an API tag. |
 
-``` go
+When no API description is supplied in code, the writer uses `README.md` from
+the current working directory as the OpenAPI description. Add `@Description`
+if you want the specification to contain a concise API description instead.
 
-type ListNewsRequest struct {
-	Page     int32 `json:"page"`  // 页号
-	PageSize int32 `json:"page_size"` // 页大小
-	Filters  struct {
-		Status   int32  `json:"status"`    // 状态 1 上架 2 下架
-		Type     int32  `json:"type"`      // 类型
-		Author   string `json:"author"`    // 作者
-		Lang     string `json:"lang"`      // 语言
-		Title    string `json:"title"`     // 标题
-		SubTitle string `json:"sub_title"` // 子标题
-		Content  string `json:"content"`   // 内容
-		Tag      string `json:"tag"`       // tag
-	} `json:"filters"` // 过滤项
+### Operations
+
+Document a handler function with operation directives and a route. The
+following example uses the Fiber handler style and generic response types:
+
+```go
+// @Summary        用户信息
+// @Title          用户信息
+// @Description    用户信息
+// @Tag            用户管理
+// @Param          request body request.AccountInfo true "用户信息"
+// @Success        200 object response.ResponseInfo[response.Account]{}
+// @Failure        200 object response.AccountInfo{}
+// @Router         /api/account/info [post]
+// @Middlewares    auth
+func (m *Logic) AccountInfo(c *fiber.Ctx, ctx context.Context, req *request.AccountInfo) error {
+    // ...
 }
+```
 
-type User struct {
-  // @example 100
-  // @desc User identity
-  ID   uint64 `json:"id"`
-  // @example Parvez
-  Name string `json:"name"`
-  // @enum 1,2,3
-  Type int8  `json:"type"`
-}
+| Directive | Syntax and purpose |
+| --- | --- |
+| `@Title` / `@Summary` | Operation summary. |
+| `@Description` / `@Desc` | Operation description; repeated lines are joined. |
+| `@OperationId` | Set the OpenAPI operation ID. |
+| `@Deprecated [true\|false]` | Mark the operation as deprecated. |
+| `@Param <name> <in> <go-type> <required> "<description>"` | Add a parameter. `in` supports `path`, `query`, `header`, `cookie`, `body`, `form`, and `file`; required accepts `true`, `false`, `required`, or `optional`. Path parameters are always required. |
+| `@Header <GoType>` | Add header parameters described by a Go struct. |
+| `@Success <status> <kind> <GoType> ["<description>"]` | Describe a successful response. |
+| `@Failure <status> <kind> <GoType> ["<description>"]` | Describe an error response. |
+| `@Response <status> <kind> <GoType> ["<description>"]` | Describe a response. |
+| `@Resource <name>` / `@Tag <name>` | Assign an operation tag. |
+| `@Route <path> [<method>[|<method>...]]` | Bind the operation to one or more HTTP methods. `@Router` is an alias. |
 
-type UsersResponse struct {
-  // @example [{"id":100, "name":"Parvez"}]
-  Data []Users `json:"users"`
-}
+For example, `@Route /users [get|post]` assigns the operation to both methods.
+Supported methods are GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD, and TRACE.
 
-type Error struct {
-  Code string `json:"code"`
-  // @skip true
-  Msg  string `json:"msg"`
-  // use skip:"true" if you want to skip the field in the documentation spec
-}
+Response kinds include `object`, `array`, `string`, `integer`, `boolean`, and
+`file`. Object and array responses refer to Go types. Generic Go types are
+supported, for example
+`response.ResponseInfo[response.Account]{}`. The response description is
+optional; when provided, enclose it in double quotes. `@Middlewares` is not
+currently interpreted by the generator; use `@Security` and
+`@SecurityScheme` to describe API authentication in the OpenAPI document.
 
-type ErrorResponse struct {
-  ErrorInfo Error `json:"error"`
-}
+### Request headers
 
-// RequestHeaders represents the model for header params
+Declare reusable header parameters on a struct, then reference that struct
+from an operation:
+
+```go
 // @HeaderParameters RequestHeaders
 type RequestHeaders struct {
-    Authorization  string  `json:"Authorization"`
+    // @required true
+    Authorization string `json:"Authorization"`
 }
 
-// @Title Get user list of a group.
-// @Description Get users related to a specific group.
-// @Header model.RequestHeaders
-// @Param  groupID  path  int  true  "Id of a specific group."
-// @Success  200  object  UsersResponse  "UsersResponse JSON"
-// @Failure  400  object  ErrorResponse  "ErrorResponse JSON"
-// @Resource users
-// @Route /api/group/{groupID}/users [get]
-func GetGroupUsers() {
-  // ...
-}
-
-// @Title Get user list of a group.
-// @Description Create a new user.
-// @Param  user  body  User  true  "Info of a user."
-// @Success  200  object  User           "UsersResponse JSON"
-// @Failure  400  object  ErrorResponse  "ErrorResponse JSON"
-// @Resource users
-// @Route /api/user [post]
-func PostUser() {
-  // ...
-}
-
-
-// @Title Get news list.
-// @Description news list.
-// @Param  request  body  ListNewsRequest  true  "news list."
-// @Success  200  object  News           "NewsResponse JSON"
-// @Failure  400  object  ErrorResponse  "ErrorResponse JSON"
-// @Resource news
-// @Route /api/news [post]
-func ListNews() {
-  // ...
-}
+// @Header RequestHeaders
+// @Route /profile [get]
+func GetProfile() {}
 ```
 
-#### Title And Description
-```
-@Title {title}
-@Title Get user list of a group.
+### Struct fields and schemas
 
-@Description {description}.
-@Description Get users related to a specific group.
-```
-- {title}: The title of the route.
-- {description}: The description of the route.
+JSON struct tags determine property names. The generator also recognizes these
+field comments:
 
-#### Parameter
-```
-@Param  {name}  {in}  {goType}  {required}  {description}
-@Param  user    body  User      true        "Info of a user."
-```
-- {name}: The parameter name.
-- {in}: The parameter is in `path`, `query`, `form`, `header`, `cookie`, `body` or `file`.
-- {goType}: The type in go code. This will be ignored when {in} is `file`.
-- {required}: `true`, `false`, `required` or `optional`.
-- {description}: The description of the parameter. Must be quoted.
+| Directive | Purpose |
+| --- | --- |
+| `@desc <text>` | Field description. Ordinary Go field comments are also used as descriptions. |
+| `@example <value>` | Field example. Arrays and objects should use valid JSON. |
+| `@override-example <value>` | Set the example as a string, overriding a generated example. |
+| `@required true` | Mark the field as required. A `required` option in the JSON tag is also recognized. |
+| `@skip true` | Omit the field from the schema. |
+| `@ref <SchemaName>` | Reference another schema. |
+| `@enum <value>[,<value>...]` | Set allowed values; integer ranges such as `1~5` are also accepted. |
+| `@default <value>` | Set a default value. |
+| `@format <format>` | Set a string format. |
+| `@title <text>` | Set the schema title. |
+| `@deprecated [true\|false]` | Mark the field as deprecated. |
+| `@minimum`, `@maximum`, `@exclusiveMaximum` | Set numeric bounds. |
+| `@minLength`, `@maxLength` | Set string length constraints. |
+| `@multipleOf` | Set a numeric constraint. |
 
-One can also override example for an object with `override-example` key in struct
-eg -
-``` go
-type Request struct {
-    // @override-example 11.0.0
-    version  model.Version `"json:"Version"`
+Example:
+
+```go
+type CreateUserRequest struct {
+    // @desc User's display name.
+    // @example Ada
+    // @required true
+    Name string `json:"name"`
+
+    // @enum active,disabled
+    Status string `json:"status,omitempty"`
 }
 ```
 
-#### Header
-```
-@Header          {goType}
-@HeaderParameters   model.RequestHeaders
-```
-- Header query param for endpoints, parses the query param from the model
+### Security
 
-#### Header Parameters
-```
-@Param              {goType}
-@HeaderParameters   RequestHeaders
+Define a security scheme in the metadata file and apply it to the API with
+`@Security`:
+
+```go
+// @SecurityScheme BearerAuth http bearer
+// @Security BearerAuth
 ```
 
-- {goType}: The type in go code. This will be ignored when {in} is `file`.
-- Parses parameters from the type and keep it up component section for reference
+Supported scheme directives include:
 
-#### Response
-``` json
-@Success  {stauts}  {in}  {goType}       {description}
-@Success  200       object      UsersResponse  "UsersResponse JSON"
+| Scheme | Syntax |
+| --- | --- |
+| HTTP | `@SecurityScheme <name> http <scheme> [description]` |
+| API key | `@SecurityScheme <name> apiKey <header\|query\|cookie> <key-name> [description]` |
+| OpenID Connect | `@SecurityScheme <name> openIdConnect <discovery-url> [description]` |
+| OAuth2 authorization code | `@SecurityScheme <name> oauth2AuthCode <authorization-url> <token-url>` |
+| OAuth2 implicit | `@SecurityScheme <name> oauth2Implicit <authorization-url>` |
+| OAuth2 password | `@SecurityScheme <name> oauth2ResourceOwnerCredentials <token-url>` |
+| OAuth2 client credentials | `@SecurityScheme <name> oauth2ClientCredentials <token-url>` |
 
-@Failure  {stauts}  {in}  {goType}       {description}
-@Failure  400       object      ErrorResponse  "ErrorResponse JSON"
-```
-- {status}: The HTTP status code.
-- {in}: The parameter is in `object` `array` `file`.
-- {goType}: The type in go code. This will be ignored when {in} is `file`.
-- {description}: The description of the response. Must be quoted.
+OAuth2 scopes can be declared with:
 
-#### Resource & Tag
-``` json
-@Resource {resource}
-@Resource users
-
-@Tag {tag}
-@tag xxx
+```go
+// @SecurityScope BearerAuth read:users Read users
+// @Security BearerAuth read:users
 ```
 
-- {resource}, {tag}: Tag of the route.
+Security is currently configured at the API level.
 
-#### Route
+## Limitations
 
-``` json
-@Route {path}    {method}
-@Route /api/user [post,get]
+- The target service must use Go modules.
+- Inline anonymous struct fields are not supported as schema types; define a
+  named struct instead.
+- The generator parses source comments and Go type declarations; it does not
+  infer routes from a web framework or execute the application.
+
+## Development
+
+Run the test suite with:
+
+```sh
+go test ./...
 ```
 
-- {path}: The URL path.
-- {method}: The HTTP Method. Must be put in brackets.
+## Acknowledgements
 
-#### Enums
-
-- To generate enums create type structs for enum field with comma-separated values as follows:
-- Create struct type fields with @Enum Tag
-- Example as follows-
-
-``` go
-// @Enum CountriesEnum
-type CountriesEnum struct {
-    // Create the field name with same as struct name
-    // @enum india,china,mexico,japan
-    // @example india
-    CountriesEnum string `json:"CountriesEnum"`
-}
-```
-
-##### How to add reference of Enum on types
-
-``` go
-type Request struct {
-  // @example Parvez
-  Name string `json:"name"`
-  // @ref CountriesEnum
-  Country string `json:"country"`
-}
-
-```
-
-### 4. Security
-
-If authorization is required, you must define security schemes and then apply those to the API. A scheme is defined
-using `@SecurityScheme [name] [type] [parameters]` and applied by
-adding `@Security [scheme-name] [scope1] [scope2] [...]`.
-
-All examples in this section use `MyApiAuth` as the name. This name can be anything you chose; multiple named schemes
-are supported. Each scheme must have its own name, except for OAuth2 schemes - OAuth2 supports multiple schemes by the
-same name.
-
-A number of different types is supported, they all have different parameters:
-
-|Type|Description|Parameters|Example|
-|---|---|---|---|
-|HTTP|A HTTP Authentication scheme using the `Authorization` header|scheme: any [HTTP Authentication scheme](https://www.iana.org/assignments/http-authschemes/http-authschemes.xhtml)|`@SecurityScheme MyApiAuth basic`|
-|APIKey|Authorization by passing an API Key along with the request|in: Location of the API Key, options are `header`, `query` and `cookie`. name: The name of the field where the API Key must be set|`@SecurityScheme MyApiAuth apiKey header X-MyCustomHeader`|
-|OpenIdConnect|Delegating security to a known OpenId server|url: The URL of the OpenId server|`@SecurityScheme MyApiAuth openIdConnect https://example.com/.well-known/openid-configuration`|
-|OAuth2AuthCode|Using the "Authentication Code" flow of OAuth2|authorizationUrl, tokenUrl|`@SecurityScheme MyApiAuth oauth2AuthCode /oauth/authorize /oauth/token`|
-|OAuth2Implicit|Using the "Implicit" flow of OAuth2|authorizationUrl|`@SecurityScheme MyApiAuth oauth2Implicit /oauth/authorize|
-|OAuth2ResourceOwnerCredentials|Using the "Resource Owner Credentials" flow of OAuth2|authorizationUrl|`@SecurityScheme MyApiAuth oauth2ResourceOwnerCredentials /oauth/token|
-|OAuth2ClientCredentials|Using the "Client Credentials" flow of OAuth2|authorizationUrl|`@SecurityScheme MyApiAuth oauth2ClientCredentials /oauth/token|
-
-Any text that is present after the last parameter wil be used as the description. For
-instance `@SecurityScheme MyApiAuth basic Login with your admin credentials`.
-
-Once all security schemes have been defined, they must be configured. This is done with the `@Security` comment.
-Depending on the `type` of the scheme, scopes (see below) may be supported. *At the moment, it is only possible to
-configure security for the entire service*.
-
-``` go
-// @Security MyApiAuth read_user write_user
-```
-
-#### Scopes
-
-For OAuth2 security schemes, it is possible to define scopes using
-the `@SecurityScope [schema-name] [scope-code] [scope-description]` comment.
-
-``` go
-// @SecurityScope MyApiAuth read_user Read a user from the system
-// @SecurityScope MyApiAuth write_user Write a user to the system
-```
-
-### 5. Limitations
-
-- Only support go module.
-- Anonymous struct field is not supported.
-
-### 6. References
-
-- The project is based on the following repositories -
 - [yvasiyarov/swagger](https://github.com/yvasiyarov/swagger)
 - [uudashr/go-module](https://github.com/uudashr/go-module)
 - [mikunalpha/goas](https://github.com/mikunalpha/goas)

@@ -72,7 +72,7 @@ func (p *parser) parseOperationFromComment(pkgPath string, pkgName string, comme
 	case "@resource", "@tag":
 		p.parseResourceAndTag(comment, attribute, operation)
 	case "@route", "@router":
-		return p.parseRouteComment(operation, comment)
+		return p.parseRouteComment(operation, strings.TrimSpace(comment[len(attribute):]))
 	}
 	return nil
 }

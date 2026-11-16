@@ -53,3 +53,38 @@ func Test_ParseHeader(t *testing.T) {
 		})
 	}
 }
+
+func Test_ParseOperationFromComment_Route(t *testing.T) {
+	tests := []struct {
+		name         string
+		comment      string
+		path         string
+		expectedGet  bool
+		expectedPost bool
+	}{
+		{name: "lowercase route attr", comment: "@route /api/user [post]", path: "/api/user", expectedPost: true},
+		{name: "mixed case route attr", comment: "@Route /api/group/{groupID}/users [get|post]", path: "/api/group/{groupID}/users", expectedGet: true, expectedPost: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			operationParser := parser{OpenAPI: &oas.OpenAPIObject{Paths: make(oas.PathsObject)}}
+			operation := &oas.OperationObject{}
+
+			err := operationParser.parseOperationFromComment("/test/path", "pkgName", tt.comment, operation)
+			assert.NoError(t, err)
+			assert.Contains(t, operationParser.OpenAPI.Paths, tt.path)
+			assert.NotNil(t, operationParser.OpenAPI.Paths[tt.path])
+			if tt.expectedGet {
+				assert.Equal(t, operation, operationParser.OpenAPI.Paths[tt.path].Get)
+			} else {
+				assert.Nil(t, operationParser.OpenAPI.Paths[tt.path].Get)
+			}
+			if tt.expectedPost {
+				assert.Equal(t, operation, operationParser.OpenAPI.Paths[tt.path].Post)
+			} else {
+				assert.Nil(t, operationParser.OpenAPI.Paths[tt.path].Post)
+			}
+		})
+	}
+}

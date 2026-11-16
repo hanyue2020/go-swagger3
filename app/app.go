@@ -1,6 +1,9 @@
 package app
 
 import (
+	"fmt"
+	"os"
+
 	parserPkg "github.com/hanyue2020/go-swagger3/parser"
 	"github.com/hanyue2020/go-swagger3/writer"
 	"github.com/urfave/cli"
@@ -30,6 +33,14 @@ func NewApp() *App {
 
 func action(c *cli.Context) error {
 	args := LoadArgs(c)
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+	if err := args.resolveDomainPaths(workingDir); err != nil {
+		return err
+	}
+
 	parser, err := parserPkg.NewParser(
 		args.modulePath,
 		args.basicInfoPath,

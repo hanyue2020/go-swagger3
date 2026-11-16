@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/hanyue2020/go-swagger3/parser/utils"
 )
@@ -98,16 +100,11 @@ func (p *parser) getModuleNameFromGoModFile() error {
 
 func (p *parser) verifyBasicInfoPath() error {
 	if p.BasicInfoPath == "" {
-		fns, err := filepath.Glob(filepath.Join(p.ModulePath, "*.go"))
+		mainFile, err := findBestMainFile(p.ModulePath)
 		if err != nil {
 			return err
 		}
-		for _, fn := range fns {
-			if utils.IsMainFile(fn) {
-				p.BasicInfoPath = fn
-				break
-			}
-		}
+		p.BasicInfoPath = mainFile
 	} else {
 		basicInfoPath, err := os.Stat(p.BasicInfoPath)
 		if err != nil {
@@ -122,6 +119,81 @@ func (p *parser) verifyBasicInfoPath() error {
 	}
 	p.Debugf("main file path: %s", p.BasicInfoPath)
 	return nil
+}
+
+func findBestMainFile(modulePath string) (string, error) {
+	var candidates []string
+	walkErr := filepath.Walk(modulePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			if isIgnoredDir(path, modulePath) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		if utils.IsMainFile(path) {
+			candidates = append(candidates, path)
+		}
+		return nil
+	})
+	if walkErr != nil {
+		return "", walkErr
+	}
+	if len(candidates) == 0 {
+		return "", fmt.Errorf("cannot find a valid main file in %s, please specify --basic-info-path or --main-file-path explicitly", modulePath)
+	}
+
+	sort.Strings(candidates)
+	best := candidates[0]
+	bestScore := scoreMainCandidate(modulePath, best)
+	bestCount := 1
+	for _, candidate := range candidates[1:] {
+		score := scoreMainCandidate(modulePath, candidate)
+		if score < bestScore {
+			best = candidate
+			bestScore = score
+			bestCount = 1
+			continue
+		}
+		if score == bestScore {
+			bestCount++
+		}
+	}
+	if bestCount > 1 {
+		return "", fmt.Errorf("multiple main files found under %s: %s; please specify --basic-info-path or --main-file-path explicitly", modulePath, strings.Join(candidates, ", "))
+	}
+	return best, nil
+}
+
+func scoreMainCandidate(modulePath, candidate string) int {
+	rel, err := filepath.Rel(modulePath, candidate)
+	if err != nil {
+		return 1 << 30
+	}
+	if rel == "" || rel == "." {
+		return 0
+	}
+	depth := strings.Count(filepath.ToSlash(rel), "/")
+	if filepath.Base(candidate) == "main.go" {
+		depth--
+	}
+	if depth < 0 {
+		depth = 0
+	}
+	return depth
+}
+
+func isIgnoredDir(path, modulePath string) bool {
+	if path == modulePath {
+		return false
+	}
+	base := filepath.Base(path)
+	return base == ".git" || base == "vendor" || base == "node_modules" || strings.HasPrefix(base, ".")
 }
 
 func (p *parser) setGoModFilePath() error {

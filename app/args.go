@@ -10,6 +10,7 @@ type args struct {
 	flags []cli.Flag
 
 	modulePath    string
+	domain        string
 	basicInfoPath string
 	handlerPath   string
 	output        string
@@ -19,10 +20,15 @@ type args struct {
 }
 
 func LoadArgs(c *cli.Context) *args {
+	basicInfoPath := c.GlobalString("basic-info-path")
+	if basicInfoPath == "" {
+		basicInfoPath = c.GlobalString("main-file-path")
+	}
 	appArgs := args{
 		flags:         flags,
 		modulePath:    c.GlobalString("module-path"),
-		basicInfoPath: c.GlobalString("basic-info-path"),
+		domain:        c.GlobalString("domain"),
+		basicInfoPath: basicInfoPath,
 		handlerPath:   c.GlobalString("handler-path"),
 		output:        c.GlobalString("output"),
 		debug:         c.GlobalBool("debug"),
@@ -43,9 +49,19 @@ var flags = []cli.Flag{
 		Usage: "go-swagger3 will search @comment under the module",
 	},
 	cli.StringFlag{
+		Name:  "domain",
+		Value: "",
+		Usage: "auto-detect the Go module and domain/<name> handler paths",
+	},
+	cli.StringFlag{
 		Name:  "basic-info-path",
 		Value: "",
-		Usage: "go-swagger3 will start to search @comment from this path file,default main.go",
+		Usage: "go-swagger3 will start to search @comment from this path file, default auto-detect main.go",
+	},
+	cli.StringFlag{
+		Name:  "main-file-path",
+		Value: "",
+		Usage: "alias of --basic-info-path; useful when a project contains multiple service mains under different domains",
 	},
 	cli.StringFlag{
 		Name:  "handler-path",
