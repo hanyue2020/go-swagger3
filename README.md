@@ -21,57 +21,49 @@ is not found.
 
 ## Generate a specification
 
-Run the command from the service's module directory:
-
-```sh
-go-swagger3 --module-path . --output openapi.json
-```
-
-The generator searches the module for a `main` package to read API-level
-metadata. If there are multiple possible service entry points, select the
-metadata file explicitly:
+Run the command from the service's project directory. The current directory is
+used as the module path by default, so `--module-path .` is usually
+unnecessary.
 
 ```sh
 go-swagger3 \
-  --module-path . \
-  --main-file-path ./cmd/api/main.go \
-  --handler-path ./internal/handlers \
-  --output ./docs/openapi.json
+  --output demo.json \
+  --handler-path domain/demo \
+  --generate-yaml \
+  --basic-info-path domain/demo/boot/default.go
 ```
 
-`--main-file-path` is an alias for `--basic-info-path`. If neither is supplied,
-the generator searches for a main file and reports an error when it cannot
-choose an unambiguous one.
+`--handler-path` selects the directory whose handler comments are scanned.
+`--basic-info-path` selects the Go file containing API metadata such as
+`@Title` and `@Version`; it does not need to be `main.go`.
 
-### Select a service by domain
+### Automatically locate a domain
 
-For repositories with a `domain/<name>` layout, `--domain` locates the module
-containing that domain and uses `domain/<name>` as the handler path and
-`domain/<name>/boot/default.go` as the metadata file:
+`--domain` searches the current project directory and its descendants for a
+Go module containing `domain/<name>`. It uses that directory as the handler
+path and `domain/<name>/boot/default.go` as the API metadata file:
 
 ```sh
-# Run from the go-swagger3 repository root.
-go run main.go --domain merchant --output xxx.yaml --generate-yaml
+go-swagger3 --output demo.json --domain demo --generate-yaml
 ```
 
-For this repository, the command finds `example/rent/go.mod` and scans
-`example/rent/domain/merchant` for handlers. The search starts in the current
-working directory and its descendants. A positional `.` is not a module-path
-argument; to select a module explicitly, use `--module-path`:
+For example, from this repository's root, `--domain demo` finds the
+`example/demo_example` module and scans `example/demo_example/domain/demo`. If more than
+one Go module contains the requested domain, select one with `--module-path`:
 
 ```sh
 go-swagger3 \
-  --module-path ./example/rent \
-  --domain merchant \
-  --output xxx.yaml \
+  --module-path ./example/demo_example \
+  --domain demo \
+  --output demo.json \
   --generate-yaml
 ```
 
-Explicit `--handler-path`, `--basic-info-path`, or `--main-file-path` values
-take precedence over the paths inferred from `--domain`.
+The inferred handler and metadata paths can still be overridden with
+`--handler-path` and `--basic-info-path`.
 
-The `.yaml` extension alone does not select YAML output; include
-`--generate-yaml`.
+When `--generate-yaml` is set, a `.json` output name is changed to `.yaml`.
+Without this flag, the output is JSON regardless of the filename extension.
 
 ### Command-line options
 
@@ -79,13 +71,15 @@ The `.yaml` extension alone does not select YAML output; include
 | --- | --- | --- |
 | `--module-path` | Current directory | Root of the Go module to scan. |
 | `--domain` | — | Infer the module and default paths for `domain/<name>`. |
-| `--basic-info-path` | Auto-detected | Go file containing API metadata comments. |
-| `--main-file-path` | — | Alias for `--basic-info-path`. |
+| `--basic-info-path` | Auto-detected | Go file containing API metadata comments. Use this to select the metadata file; it does not need to be `main.go`. |
 | `--handler-path` | Entire module | Restrict endpoint comment scanning to this directory. |
 | `--output` | `oas.json` | Output file path. |
 | `--generate-yaml` | `false` | Write YAML instead of JSON. If the output ends in `.json`, its extension is changed to `.yaml`. |
 | `--debug` | `false` | Enable debug logging. |
 | `--strict` | `false` | Return errors encountered while parsing Go packages instead of skipping those packages. |
+
+`--main-file-path` remains an optional alias for `--basic-info-path`; normal
+usage can select a metadata file directly or let `--domain` infer it.
 
 `--schema-without-pkg` is still accepted by the CLI for compatibility, but is
 not currently connected to schema generation.
