@@ -4,8 +4,8 @@ import (
 	"go/ast"
 	"strings"
 
-	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
-	"github.com/hanyue2020/go-swagger3/parser/utils"
+	. "github.com/hanyue2020/evadoc/openApi3Schema"
+	"github.com/hanyue2020/evadoc/parser/utils"
 	"github.com/iancoleman/orderedmap"
 )
 

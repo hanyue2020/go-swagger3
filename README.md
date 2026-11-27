@@ -13,7 +13,7 @@ does not need to run the service.
 ## Install
 
 ```sh
-go install github.com/hanyue2020/go-swagger3@latest
+go install github.com/hanyue2020/evadoc@latest
 ```
 
 Make sure `$(go env GOPATH)/bin` is on your `PATH` if the `go-swagger3` command
@@ -165,9 +165,11 @@ Supported methods are GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD, and TRACE.
 Response kinds include `object`, `array`, `string`, `integer`, `boolean`, and
 `file`. Object and array responses refer to Go types. Generic Go types are
 supported, for example
-`response.ResponseInfo[response.Account]{}`. The response description is
-optional; when provided, enclose it in double quotes. `@Middlewares` is not
-currently interpreted by the generator; use `@Security` and
+`response.ResponseInfo[response.Account]{}`. Angle-bracket notation such as
+`response.ResponseInfo<response.Account>{}` is also accepted. A single type
+argument also specializes `any` fields in a non-generic response wrapper. The
+response description is optional; when provided, enclose it in double quotes.
+`@Middlewares` is not currently interpreted by the generator; use `@Security` and
 `@SecurityScheme` to describe API authentication in the OpenAPI document.
 
 ### Request headers

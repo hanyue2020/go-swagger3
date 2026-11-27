@@ -3,14 +3,14 @@ package parser
 import (
 	"go/ast"
 
-	"github.com/hanyue2020/go-swagger3/logger"
-	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
-	"github.com/hanyue2020/go-swagger3/parser/apis"
-	"github.com/hanyue2020/go-swagger3/parser/gomod"
-	"github.com/hanyue2020/go-swagger3/parser/info"
-	"github.com/hanyue2020/go-swagger3/parser/model"
-	"github.com/hanyue2020/go-swagger3/parser/module"
-	"github.com/hanyue2020/go-swagger3/parser/schema"
+	"github.com/hanyue2020/evadoc/logger"
+	. "github.com/hanyue2020/evadoc/openApi3Schema"
+	"github.com/hanyue2020/evadoc/parser/apis"
+	"github.com/hanyue2020/evadoc/parser/gomod"
+	"github.com/hanyue2020/evadoc/parser/info"
+	"github.com/hanyue2020/evadoc/parser/model"
+	"github.com/hanyue2020/evadoc/parser/module"
+	"github.com/hanyue2020/evadoc/parser/schema"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -4,7 +4,7 @@ import (
 	"go/ast"
 	"testing"
 
-	oas "github.com/hanyue2020/go-swagger3/openApi3Schema"
+	oas "github.com/hanyue2020/evadoc/openApi3Schema"
 	"github.com/stretchr/testify/assert"
 )
 

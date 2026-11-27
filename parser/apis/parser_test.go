@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	oas "github.com/hanyue2020/go-swagger3/openApi3Schema"
-	"github.com/hanyue2020/go-swagger3/parser/schema"
+	oas "github.com/hanyue2020/evadoc/openApi3Schema"
+	"github.com/hanyue2020/evadoc/parser/schema"
 	"github.com/iancoleman/orderedmap"
 	"github.com/stretchr/testify/assert"
 )

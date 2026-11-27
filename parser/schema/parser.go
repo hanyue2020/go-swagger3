@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
-	"github.com/hanyue2020/go-swagger3/parser/model"
-	"github.com/hanyue2020/go-swagger3/parser/utils"
+	. "github.com/hanyue2020/evadoc/openApi3Schema"
+	"github.com/hanyue2020/evadoc/parser/model"
+	"github.com/hanyue2020/evadoc/parser/utils"
 	"github.com/spf13/cast"
 )
 
@@ -52,7 +52,7 @@ func (p *parser) GetPkgAst(pkgPath string) (map[string]*ast.Package, error) {
 func (p *parser) RegisterType(pkgPath, pkgName, typeName string, astExpr ast.Expr) (string, error) {
 	var registerTypeName string
 
-	if strings.Contains(typeName, "[") {
+	if strings.ContainsAny(typeName, "[<") {
 		genericPkgPath, genericPkgName, genericTypeName, handled, err := p.instantiateGenericType(pkgName, typeName)
 		if err != nil {
 			return "", err

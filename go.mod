@@ -1,4 +1,4 @@
-module github.com/hanyue2020/go-swagger3
+module github.com/hanyue2020/evadoc
 
 go 1.24.0
 

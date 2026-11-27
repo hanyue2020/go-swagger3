@@ -14,6 +14,9 @@ func (p *parser) instantiateGenericType(currentPkgName, typeName string) (pkgPat
 	if strings.HasPrefix(typeName, "map[]") {
 		return "", "", "", false, nil
 	}
+	if strings.Contains(typeName, "<") {
+		typeName = strings.NewReplacer("<", "[", ">", "]").Replace(typeName)
+	}
 	expr, err := goParser.ParseExpr(typeName)
 	if err != nil {
 		return "", "", "", false, fmt.Errorf("parse generic type %q: %w", typeName, err)
@@ -41,14 +44,17 @@ func (p *parser) instantiateGenericType(currentPkgName, typeName string) (pkgPat
 	if !ok {
 		return "", "", "", false, fmt.Errorf("cannot find generic type %q in package %q", baseType, basePackage)
 	}
-	if typeSpec.TypeParams == nil || typeSpec.TypeParams.NumFields() == 0 {
-		return "", "", "", false, fmt.Errorf("type %q is not generic", baseType)
-	}
-
 	var typeParams []string
-	for _, field := range typeSpec.TypeParams.List {
-		for _, name := range field.Names {
-			typeParams = append(typeParams, name.Name)
+	if typeSpec.TypeParams == nil || typeSpec.TypeParams.NumFields() == 0 {
+		if !hasTypeParameter(typeSpec.Type, "any") {
+			return "", "", "", false, fmt.Errorf("type %q is not generic", baseType)
+		}
+		typeParams = append(typeParams, "any")
+	} else {
+		for _, field := range typeSpec.TypeParams.List {
+			for _, name := range field.Names {
+				typeParams = append(typeParams, name.Name)
+			}
 		}
 	}
 	if len(typeArgs) != len(typeParams) {
@@ -79,6 +85,19 @@ func (p *parser) instantiateGenericType(currentPkgName, typeName string) (pkgPat
 		}
 	}
 	return pkgPath, pkgName, specializedName, true, nil
+}
+
+func hasTypeParameter(expr ast.Expr, name string) bool {
+	found := false
+	ast.Inspect(expr, func(node ast.Node) bool {
+		ident, ok := node.(*ast.Ident)
+		if ok && ident.Name == name {
+			found = true
+			return false
+		}
+		return !found
+	})
+	return found
 }
 
 func splitQualifiedType(expr ast.Expr) (packageName, typeName string, ok bool) {

@@ -1,6 +1,6 @@
 package generate
 
-import "github.com/hanyue2020/go-swagger3/generate/adaptor"
+import "github.com/hanyue2020/evadoc/generate/adaptor"
 
 type Generator interface {
 	Gen(args ...string) any

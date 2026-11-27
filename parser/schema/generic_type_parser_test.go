@@ -6,8 +6,8 @@ import (
 	"go/token"
 	"testing"
 
-	oas "github.com/hanyue2020/go-swagger3/openApi3Schema"
-	"github.com/hanyue2020/go-swagger3/parser/model"
+	oas "github.com/hanyue2020/evadoc/openApi3Schema"
+	"github.com/hanyue2020/evadoc/parser/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,6 +29,11 @@ type ResponseItems[T any] struct {
 	Data struct {
 		Items []T
 	}
+}
+
+type ResponseEnvelope struct {
+	Data any
+	Items []any
 }
 `, goParser.ParseComments)
 	require.NoError(t, err)
@@ -65,7 +70,7 @@ type ResponseItems[T any] struct {
 	}
 	p := &parser{Utils: utils, OpenAPI: openAPI}
 
-	schemaID, err := p.RegisterType("/example/logic", logicPkg, "response.ResponseItems[response.Account]", nil)
+	schemaID, err := p.RegisterType("/example/logic", logicPkg, "response.ResponseItems<response.Account>", nil)
 	require.NoError(t, err)
 	assert.Equal(t, "example.response.ResponseItems__generic__Account", schemaID)
 
@@ -84,4 +89,20 @@ type ResponseItems[T any] struct {
 	assert.Equal(t, "object", itemsSchema.Items.Type)
 	_, hasName := itemsSchema.Items.Properties.Get("Name")
 	assert.True(t, hasName)
+
+	envelopeID, err := p.RegisterType("/example/logic", logicPkg, "response.ResponseEnvelope<response.Account>", nil)
+	require.NoError(t, err)
+	assert.Equal(t, "example.response.ResponseEnvelope__generic__Account", envelopeID)
+	envelopeSchema := openAPI.Components.Schemas[envelopeID]
+	dataValue, ok = envelopeSchema.Properties.Get("Data")
+	require.True(t, ok)
+	dataSchema, ok = dataValue.(*oas.SchemaObject)
+	require.True(t, ok)
+	assert.Equal(t, "#/components/schemas/example.response.Account", dataSchema.Ref)
+	itemsValue, ok = envelopeSchema.Properties.Get("Items")
+	require.True(t, ok)
+	itemsSchema, ok = itemsValue.(*oas.SchemaObject)
+	require.True(t, ok)
+	require.NotNil(t, itemsSchema.Items)
+	assert.Equal(t, "#/components/schemas/example.response.Account", itemsSchema.Items.Ref)
 }

@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	oas "github.com/hanyue2020/go-swagger3/openApi3Schema"
-	"github.com/hanyue2020/go-swagger3/parser/utils"
+	oas "github.com/hanyue2020/evadoc/openApi3Schema"
+	"github.com/hanyue2020/evadoc/parser/utils"
 	"github.com/iancoleman/orderedmap"
 )
 

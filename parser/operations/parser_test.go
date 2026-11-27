@@ -4,10 +4,33 @@ import (
 	"errors"
 	"testing"
 
-	oas "github.com/hanyue2020/go-swagger3/openApi3Schema"
-	"github.com/hanyue2020/go-swagger3/parser/schema"
+	oas "github.com/hanyue2020/evadoc/openApi3Schema"
+	"github.com/hanyue2020/evadoc/parser/schema"
+	"github.com/hanyue2020/evadoc/parser/schema/mocks"
 	"github.com/stretchr/testify/assert"
 )
+
+func Test_ParseResponseCommentWithAngleBracketGenericType(t *testing.T) {
+	schemaParser := &mocks.SchemaParser{}
+	schemaParser.
+		On("RegisterType", "/test/path", "pkgName", "response.ResponseArray<response.Demo>").
+		Return("pkg.response.ResponseArray__generic__Demo", nil)
+	operationParser := parser{Parser: schemaParser}
+	operation := &oas.OperationObject{Responses: make(map[string]*oas.ResponseObject)}
+
+	err := operationParser.parseResponseComment(
+		"/test/path",
+		"pkgName",
+		operation,
+		`200 object response.ResponseArray<response.Demo>{}`,
+	)
+
+	assert.NoError(t, err)
+	response, ok := operation.Responses["200"]
+	assert.True(t, ok)
+	assert.Equal(t, "#/components/schemas/pkg.response.ResponseArray__generic__Demo", response.Content[oas.ContentTypeJson].Schema.Ref)
+	schemaParser.AssertExpectations(t)
+}
 
 func Test_ParseHeader(t *testing.T) {
 	tests := []struct {

@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hanyue2020/go-swagger3/parser/utils"
+	"github.com/hanyue2020/evadoc/parser/utils"
 )
 
 func (p *parser) verifyAndSetPaths() error {

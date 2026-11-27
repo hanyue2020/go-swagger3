@@ -5,7 +5,7 @@ import (
 	"go/ast"
 	"strings"
 
-	oas "github.com/hanyue2020/go-swagger3/openApi3Schema"
+	oas "github.com/hanyue2020/evadoc/openApi3Schema"
 )
 
 func (p *parser) parseParameters() error {

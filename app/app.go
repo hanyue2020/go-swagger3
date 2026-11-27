@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	parserPkg "github.com/hanyue2020/go-swagger3/parser"
-	"github.com/hanyue2020/go-swagger3/writer"
+	parserPkg "github.com/hanyue2020/evadoc/parser"
+	"github.com/hanyue2020/evadoc/writer"
 	"github.com/urfave/cli"
 )
 

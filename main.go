@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	appPkg "github.com/hanyue2020/go-swagger3/app"
+	appPkg "github.com/hanyue2020/evadoc/app"
 )
 
 func main() {

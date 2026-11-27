@@ -4,9 +4,9 @@ import (
 	"go/ast"
 	"strings"
 
-	. "github.com/hanyue2020/go-swagger3/openApi3Schema"
-	"github.com/hanyue2020/go-swagger3/parser/model"
-	"github.com/hanyue2020/go-swagger3/parser/schema"
+	. "github.com/hanyue2020/evadoc/openApi3Schema"
+	"github.com/hanyue2020/evadoc/parser/model"
+	"github.com/hanyue2020/evadoc/parser/schema"
 	"github.com/spf13/cast"
 )
 

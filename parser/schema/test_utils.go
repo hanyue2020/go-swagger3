@@ -1,8 +1,8 @@
 package schema
 
 import (
-	oas "github.com/hanyue2020/go-swagger3/openApi3Schema"
-	"github.com/hanyue2020/go-swagger3/parser/schema/mocks"
+	oas "github.com/hanyue2020/evadoc/openApi3Schema"
+	"github.com/hanyue2020/evadoc/parser/schema/mocks"
 	"github.com/iancoleman/orderedmap"
 )
 
