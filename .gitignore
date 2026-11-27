@@ -15,6 +15,7 @@ __debug_bin*
 
 #Intellij
 .idea
+build
 
 # build file
 go-swagger3

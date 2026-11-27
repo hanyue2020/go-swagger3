@@ -1,4 +1,5 @@
 COVERAGE_OUT_DIRECTORY="coverage/lcov"
+GOOS ?= $(shell go env GOOS)
 
 .PHONY: check
 check:
@@ -17,3 +18,10 @@ cover-lcov:
 	(cat coverage.out.tmp | grep -v "mocks/" > coverage.out) && rm coverage.out.tmp
 	cat coverage.out | gcov2lcov -outfile=coverage.lcov
 	genhtml coverage.lcov -o $(COVERAGE_OUT_DIRECTORY) && open $(COVERAGE_OUT_DIRECTORY)/index.html
+
+.PHONY: build
+
+build:
+	go mod tidy
+	mkdir -p build/$(GOOS)
+	GOOS=$(GOOS) go build --tags static -trimpath -o build/$(GOOS)/evadoc$(if $(filter windows,$(GOOS)),.exe,) ./cmd/evadoc

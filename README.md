@@ -13,10 +13,10 @@ does not need to run the service.
 ## Install
 
 ```sh
-go install github.com/hanyue2020/evadoc@latest
+go install github.com/hanyue2020/evadoc/cmd/evadoc@latest
 ```
 
-Make sure `$(go env GOPATH)/bin` is on your `PATH` if the `go-swagger3` command
+Make sure `$(go env GOPATH)/bin` is on your `PATH` if the `evadoc` command
 is not found.
 
 ## Generate a specification
@@ -26,7 +26,7 @@ used as the module path by default, so `--module-path .` is usually
 unnecessary.
 
 ```sh
-go-swagger3 \
+evadoc \
   --output demo.json \
   --handler-path domain/demo \
   --generate-yaml \
@@ -44,7 +44,7 @@ Go module containing `domain/<name>`. It uses that directory as the handler
 path and `domain/<name>/boot/default.go` as the API metadata file:
 
 ```sh
-go-swagger3 --output demo.json --domain demo --generate-yaml
+evadoc --output demo.json --domain demo --generate-yaml
 ```
 
 For example, from this repository's root, `--domain demo` finds the
@@ -52,7 +52,7 @@ For example, from this repository's root, `--domain demo` finds the
 one Go module contains the requested domain, select one with `--module-path`:
 
 ```sh
-go-swagger3 \
+evadoc \
   --module-path ./example/demo_example \
   --domain demo \
   --output demo.json \
